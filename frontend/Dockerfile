@@ -1,35 +1,35 @@
-# 构建阶段
+# Build stage
 FROM node:18-alpine as builder
 
 WORKDIR /app
 
-# 安装依赖
+# Install dependencies
 COPY package*.json ./
-RUN npm ci --registry=https://registry.npmmirror.com
+RUN npm install --registry=https://registry.npmmirror.com
 
-# 构建
+# Build
 COPY . .
 RUN npm run build
 
-# 运行阶段
+# Runtime stage
 FROM nginx:alpine
 
-# 时区设置
+# Timezone setting
 ENV TZ=Asia/Shanghai
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
-# 复制构建产物
+# Copy build artifacts
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# 复制nginx配置
+# Copy nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# 暴露端口
+# Expose port
 EXPOSE 80
 
-# 健康检查
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD wget --quiet --tries=1 --spider http://localhost/ || exit 1
 
-# 启动nginx
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

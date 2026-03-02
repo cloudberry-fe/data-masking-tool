@@ -4,7 +4,7 @@
       <a-space>
         <a-input-search
           v-model:value="search.keyword"
-          placeholder="搜索用户名或姓名"
+          placeholder="Search username or name"
           style="width: 240px"
           @search="loadData"
           allow-clear
@@ -13,7 +13,7 @@
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          新增用户
+          Add User
         </a-button>
       </a-space>
     </div>
@@ -29,7 +29,7 @@
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'status'">
           <a-tag :color="record.status === 1 ? 'success' : 'default'">
-            {{ record.status === 1 ? '启用' : '禁用' }}
+            {{ record.status === 1 ? 'Enabled' : 'Disabled' }}
           </a-tag>
         </template>
         <template v-if="column.key === 'roles'">
@@ -40,14 +40,14 @@
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="showRoleModal(record)">
-              分配角色
+              Assign Roles
             </a-button>
             <a-button type="link" size="small" @click="showEditModal(record)">
-              编辑
+              Edit
             </a-button>
-            <a-popconfirm v-if="record.id !== currentUserId" title="确定要删除该用户吗？" @confirm="deleteUser(record.id)">
+            <a-popconfirm v-if="record.id !== currentUserId" title="Are you sure you want to delete this user?" @confirm="deleteUser(record.id)">
               <a-button type="link" size="small" danger>
-                删除
+                Delete
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -55,9 +55,9 @@
       </template>
     </a-table>
 
-    <!-- 新建/编辑用户弹窗 -->
+    <!-- Create/Edit User Modal -->
     <a-modal
-      :title="isEdit ? '编辑用户' : '新增用户'"
+      :title="isEdit ? 'Edit User' : 'Add User'"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
@@ -70,43 +70,43 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item v-if="!isEdit" label="用户名" name="username" :rules="[{ required: true }]">
-          <a-input v-model:value="formState.username" placeholder="请输入" />
+        <a-form-item v-if="!isEdit" label="Username" name="username" :rules="[{ required: true }]">
+          <a-input v-model:value="formState.username" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item v-if="!isEdit" label="密码" name="password" :rules="isEdit ? [] : [{ required: true }]">
-          <a-input-password v-model:value="formState.password" placeholder="请输入" />
+        <a-form-item v-if="!isEdit" label="Password" name="password" :rules="isEdit ? [] : [{ required: true }]">
+          <a-input-password v-model:value="formState.password" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="真实姓名" name="realName">
-          <a-input v-model:value="formState.realName" placeholder="请输入" />
+        <a-form-item label="Real Name" name="realName">
+          <a-input v-model:value="formState.realName" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="邮箱" name="email">
-          <a-input v-model:value="formState.email" placeholder="请输入" />
+        <a-form-item label="Email" name="email">
+          <a-input v-model:value="formState.email" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="手机号" name="phone">
-          <a-input v-model:value="formState.phone" placeholder="请输入" />
+        <a-form-item label="Phone" name="phone">
+          <a-input v-model:value="formState.phone" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="状态" name="status">
+        <a-form-item label="Status" name="status">
           <a-select v-model:value="formState.status">
-            <a-select-option :value="1">启用</a-select-option>
-            <a-select-option :value="0">禁用</a-select-option>
+            <a-select-option :value="1">Enabled</a-select-option>
+            <a-select-option :value="0">Disabled</a-select-option>
           </a-select>
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <!-- 分配角色弹窗 -->
+    <!-- Assign Roles Modal -->
     <a-modal
-      title="分配角色"
+      title="Assign Roles"
       v-model:open="roleModalVisible"
       @ok="handleRoleModalOk"
       @cancel="roleModalVisible = false"
       width="500px"
     >
       <a-form :label-col="{ span: 6 }" :wrapper-col="{ span: 16 }">
-        <a-form-item label="用户">
+        <a-form-item label="User">
           <span>{{ roleFormUser?.username }}</span>
         </a-form-item>
-        <a-form-item label="选择角色">
+        <a-form-item label="Select Roles">
           <a-checkbox-group v-model:value="selectedRoleIds">
             <a-checkbox v-for="role in allRoles" :key="role.id" :value="role.id">
               {{ role.roleName }}
@@ -161,13 +161,13 @@ const roleFormUser = ref<any>(null)
 const selectedRoleIds = ref<number[]>([])
 
 const columns = [
-  { title: '用户名', dataIndex: 'username', key: 'username' },
-  { title: '真实姓名', dataIndex: 'realName', key: 'realName' },
-  { title: '邮箱', dataIndex: 'email', key: 'email' },
-  { title: '角色', key: 'roles' },
-  { title: '状态', key: 'status', width: 80 },
-  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt' },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' as const }
+  { title: 'Username', dataIndex: 'username', key: 'username' },
+  { title: 'Real Name', dataIndex: 'realName', key: 'realName' },
+  { title: 'Email', dataIndex: 'email', key: 'email' },
+  { title: 'Roles', key: 'roles' },
+  { title: 'Status', key: 'status', width: 80 },
+  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt' },
+  { title: 'Actions', key: 'actions', width: 220, fixed: 'right' as const }
 ]
 
 async function loadRoles() {
@@ -236,10 +236,10 @@ async function handleModalOk() {
 
     if (isEdit.value) {
       await request.put(`/system/users/${formState.id}`, formState)
-      message.success('更新成功')
+      message.success('Updated successfully')
     } else {
       await request.post('/system/users', formState)
-      message.success('创建成功')
+      message.success('Created successfully')
     }
 
     modalVisible.value = false
@@ -265,7 +265,7 @@ async function handleRoleModalOk() {
       userId: roleFormUser.value.id,
       roleIds: selectedRoleIds.value
     })
-    message.success('分配成功')
+    message.success('Assigned successfully')
     roleModalVisible.value = false
     loadData()
   } catch (error) {
@@ -276,7 +276,7 @@ async function handleRoleModalOk() {
 async function deleteUser(id: number) {
   try {
     await request.delete(`/system/users/${id}`)
-    message.success('删除成功')
+    message.success('Deleted successfully')
     loadData()
   } catch (error) {
     //

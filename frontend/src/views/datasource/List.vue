@@ -4,14 +4,14 @@
       <a-space>
         <a-input-search
           v-model:value="search.keyword"
-          placeholder="搜索数据源名称"
+          placeholder="Search data source name"
           style="width: 240px"
           @search="loadData"
           allow-clear
         />
         <a-select
           v-model:value="search.datasourceType"
-          placeholder="数据源类型"
+          placeholder="Data source type"
           style="width: 160px"
           allow-clear
           @change="loadData"
@@ -24,7 +24,7 @@
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          新增数据源
+          Add Data Source
         </a-button>
       </a-space>
     </div>
@@ -45,20 +45,20 @@
         </template>
         <template v-if="column.key === 'status'">
           <a-tag :color="record.status === 1 ? 'success' : 'default'">
-            {{ record.status === 1 ? '启用' : '禁用' }}
+            {{ record.status === 1 ? 'Enabled' : 'Disabled' }}
           </a-tag>
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="testConnection(record)">
-              测试连接
+              Test Connection
             </a-button>
             <a-button type="link" size="small" @click="showEditModal(record)">
-              编辑
+              Edit
             </a-button>
-            <a-popconfirm title="确定要删除该数据源吗？" @confirm="deleteDatasource(record.id)">
+            <a-popconfirm title="Are you sure you want to delete this data source?" @confirm="deleteDatasource(record.id)">
               <a-button type="link" size="small" danger>
-                删除
+                Delete
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -66,9 +66,9 @@
       </template>
     </a-table>
 
-    <!-- 新增/编辑弹窗 -->
+    <!-- Create/Edit Modal -->
     <a-modal
-      :title="isEdit ? '编辑数据源' : '新增数据源'"
+      :title="isEdit ? 'Edit Data Source' : 'Add Data Source'"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
@@ -81,32 +81,32 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="数据源名称" name="datasourceName" :rules="[{ required: true, message: '请输入' }]">
-          <a-input v-model:value="formState.datasourceName" placeholder="请输入" />
+        <a-form-item label="Data Source Name" name="datasourceName" :rules="[{ required: true, message: 'Please enter' }]">
+          <a-input v-model:value="formState.datasourceName" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="数据源类型" name="datasourceType" :rules="[{ required: true, message: '请选择' }]">
-          <a-select v-model:value="formState.datasourceType" placeholder="请选择">
+        <a-form-item label="Data Source Type" name="datasourceType" :rules="[{ required: true, message: 'Please select' }]">
+          <a-select v-model:value="formState.datasourceType" placeholder="Please select">
             <a-select-option v-for="t in datasourceTypes" :key="t.value" :value="t.value">
               {{ t.label }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="主机地址" name="host" :rules="[{ required: true, message: '请输入' }]">
+        <a-form-item label="Host" name="host" :rules="[{ required: true, message: 'Please enter' }]">
           <a-input v-model:value="formState.host" placeholder="localhost" />
         </a-form-item>
-        <a-form-item label="端口" name="port" :rules="[{ required: true, message: '请输入' }]">
+        <a-form-item label="Port" name="port" :rules="[{ required: true, message: 'Please enter' }]">
           <a-input-number v-model:value="formState.port" :min="1" :max="65535" style="width: 100%" />
         </a-form-item>
-        <a-form-item label="数据库名" name="databaseName">
-          <a-input v-model:value="formState.databaseName" placeholder="请输入" />
+        <a-form-item label="Database Name" name="databaseName">
+          <a-input v-model:value="formState.databaseName" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="用户名" name="username">
-          <a-input v-model:value="formState.username" placeholder="请输入" />
+        <a-form-item label="Username" name="username">
+          <a-input v-model:value="formState.username" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="密码" name="password">
-          <a-input-password v-model:value="formState.password" placeholder="请输入" />
+        <a-form-item label="Password" name="password">
+          <a-input-password v-model:value="formState.password" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="启用账号映射" name="enableAccountMapping">
+        <a-form-item label="Enable Account Mapping" name="enableAccountMapping">
           <a-switch v-model:checked="formState.enableAccountMapping" />
         </a-form-item>
       </a-form>
@@ -144,7 +144,7 @@ const datasourceTypes = [
   { label: 'Oracle', value: 'ORACLE' },
   { label: 'MySQL', value: 'MYSQL' },
   { label: 'GoldenDB', value: 'GOLDENDB' },
-  { label: '达梦', value: 'DM' }
+  { label: 'DM', value: 'DM' }
 ]
 
 const formState = reactive({
@@ -160,14 +160,14 @@ const formState = reactive({
 })
 
 const columns = [
-  { title: '数据源名称', dataIndex: 'datasourceName', key: 'datasourceName' },
-  { title: '类型', key: 'datasourceType', width: 160 },
-  { title: '主机', dataIndex: 'host', key: 'host' },
-  { title: '端口', dataIndex: 'port', key: 'port', width: 80 },
-  { title: '数据库', dataIndex: 'databaseName', key: 'databaseName' },
-  { title: '状态', key: 'status', width: 80 },
-  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt' },
-  { title: '操作', key: 'actions', width: 200, fixed: 'right' as const }
+  { title: 'Data Source Name', dataIndex: 'datasourceName', key: 'datasourceName' },
+  { title: 'Type', key: 'datasourceType', width: 160 },
+  { title: 'Host', dataIndex: 'host', key: 'host' },
+  { title: 'Port', dataIndex: 'port', key: 'port', width: 80 },
+  { title: 'Database', dataIndex: 'databaseName', key: 'databaseName' },
+  { title: 'Status', key: 'status', width: 80 },
+  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt' },
+  { title: 'Actions', key: 'actions', width: 200, fixed: 'right' as const }
 ]
 
 async function loadData() {
@@ -233,10 +233,10 @@ async function handleModalOk() {
 
     if (isEdit.value) {
       await request.put(`/datasources/${formState.id}`, formState)
-      message.success('更新成功')
+      message.success('Updated successfully')
     } else {
       await request.post('/datasources', formState)
-      message.success('创建成功')
+      message.success('Created successfully')
     }
 
     modalVisible.value = false
@@ -258,26 +258,26 @@ async function testConnection(record: any) {
       port: record.port,
       databaseName: record.databaseName,
       username: record.username,
-      password: '' // 需要用户输入密码
+      password: '' // User needs to enter password
     })
 
     if (result.success) {
-      message.success(`连接成功！${result.version || ''}`)
+      message.success(`Connection successful! ${result.version || ''}`)
     } else {
       message.error(result.message)
     }
   } catch (error) {
-    // 错误已在拦截器处理
+    // Error handled in interceptor
   }
 }
 
 async function deleteDatasource(id: number) {
   try {
     await request.delete(`/datasources/${id}`)
-    message.success('删除成功')
+    message.success('Deleted successfully')
     loadData()
   } catch (error) {
-    // 错误已在拦截器处理
+    // Error handled in interceptor
   }
 }
 

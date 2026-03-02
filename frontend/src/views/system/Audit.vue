@@ -1,44 +1,44 @@
 <template>
   <div class="audit-page">
     <a-card>
-      <template #title>审计日志</template>
+      <template #title>Audit Logs</template>
       <a-form layout="inline" style="margin-bottom: 16px">
-        <a-form-item label="用户名">
-          <a-input v-model:value="search.username" placeholder="请输入" style="width: 160px" allow-clear />
+        <a-form-item label="Username">
+          <a-input v-model:value="search.username" placeholder="Please enter" style="width: 160px" allow-clear />
         </a-form-item>
-        <a-form-item label="操作类型">
-          <a-select v-model:value="search.operationType" placeholder="请选择" style="width: 140px" allow-clear>
-            <a-select-option value="LOGIN">登录</a-select-option>
-            <a-select-option value="LOGOUT">登出</a-select-option>
-            <a-select-option value="CREATE">创建</a-select-option>
-            <a-select-option value="UPDATE">更新</a-select-option>
-            <a-select-option value="DELETE">删除</a-select-option>
-            <a-select-option value="EXECUTE">执行</a-select-option>
+        <a-form-item label="Operation Type">
+          <a-select v-model:value="search.operationType" placeholder="Please select" style="width: 140px" allow-clear>
+            <a-select-option value="LOGIN">Login</a-select-option>
+            <a-select-option value="LOGOUT">Logout</a-select-option>
+            <a-select-option value="CREATE">Create</a-select-option>
+            <a-select-option value="UPDATE">Update</a-select-option>
+            <a-select-option value="DELETE">Delete</a-select-option>
+            <a-select-option value="EXECUTE">Execute</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="操作模块">
-          <a-select v-model:value="search.operationModule" placeholder="请选择" style="width: 140px" allow-clear>
-            <a-select-option value="auth">认证</a-select-option>
-            <a-select-option value="datasource">数据源</a-select-option>
-            <a-select-option value="masking">数据脱敏</a-select-option>
-            <a-select-option value="lineage">血缘分析</a-select-option>
-            <a-select-option value="sync">翻数工具</a-select-option>
-            <a-select-option value="system">系统管理</a-select-option>
+        <a-form-item label="Module">
+          <a-select v-model:value="search.operationModule" placeholder="Please select" style="width: 140px" allow-clear>
+            <a-select-option value="auth">Auth</a-select-option>
+            <a-select-option value="datasource">Data Sources</a-select-option>
+            <a-select-option value="masking">Data Masking</a-select-option>
+            <a-select-option value="lineage">Lineage Analysis</a-select-option>
+            <a-select-option value="sync">Data Sync</a-select-option>
+            <a-select-option value="system">System</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="结果">
-          <a-select v-model:value="search.responseResult" placeholder="请选择" style="width: 120px" allow-clear>
-            <a-select-option value="SUCCESS">成功</a-select-option>
-            <a-select-option value="FAIL">失败</a-select-option>
+        <a-form-item label="Result">
+          <a-select v-model:value="search.responseResult" placeholder="Please select" style="width: 120px" allow-clear>
+            <a-select-option value="SUCCESS">Success</a-select-option>
+            <a-select-option value="FAIL">Failed</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="时间范围">
+        <a-form-item label="Time Range">
           <a-range-picker v-model:value="timeRange" @change="handleTimeRangeChange" />
         </a-form-item>
         <a-form-item>
           <a-space>
-            <a-button type="primary" @click="loadData">查询</a-button>
-            <a-button @click="resetSearch">重置</a-button>
+            <a-button type="primary" @click="loadData">Search</a-button>
+            <a-button @click="resetSearch">Reset</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -56,7 +56,7 @@
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'responseResult'">
             <a-tag :color="record.responseResult === 'SUCCESS' ? 'success' : 'error'">
-              {{ record.responseResult === 'SUCCESS' ? '成功' : '失败' }}
+              {{ record.responseResult === 'SUCCESS' ? 'Success' : 'Failed' }}
             </a-tag>
           </template>
           <template v-if="column.key === 'operationDesc'">
@@ -71,16 +71,16 @@
           </template>
           <template v-if="column.key === 'actions'">
             <a-button type="link" size="small" @click="showDetail(record)">
-              详情
+              Details
             </a-button>
           </template>
         </template>
       </a-table>
     </a-card>
 
-    <!-- 详情弹窗 -->
+    <!-- Detail Modal -->
     <a-modal
-      title="日志详情"
+      title="Log Details"
       v-model:open="detailModalVisible"
       :footer="null"
       width="700px"
@@ -89,39 +89,39 @@
         <a-descriptions-item label="ID" :span="2">
           {{ currentLog.id }}
         </a-descriptions-item>
-        <a-descriptions-item label="用户名">
+        <a-descriptions-item label="Username">
           {{ currentLog.username }}
         </a-descriptions-item>
-        <a-descriptions-item label="操作类型">
+        <a-descriptions-item label="Operation Type">
           {{ currentLog.operationType }}
         </a-descriptions-item>
-        <a-descriptions-item label="操作模块">
+        <a-descriptions-item label="Module">
           {{ currentLog.operationModule }}
         </a-descriptions-item>
-        <a-descriptions-item label="结果">
+        <a-descriptions-item label="Result">
           <a-tag :color="currentLog.responseResult === 'SUCCESS' ? 'success' : 'error'">
-            {{ currentLog.responseResult === 'SUCCESS' ? '成功' : '失败' }}
+            {{ currentLog.responseResult === 'SUCCESS' ? 'Success' : 'Failed' }}
           </a-tag>
         </a-descriptions-item>
-        <a-descriptions-item label="操作描述" :span="2">
+        <a-descriptions-item label="Description" :span="2">
           {{ currentLog.operationDesc }}
         </a-descriptions-item>
-        <a-descriptions-item label="请求方法">
+        <a-descriptions-item label="Request Method">
           {{ currentLog.requestMethod }}
         </a-descriptions-item>
-        <a-descriptions-item label="请求URL" :span="2">
+        <a-descriptions-item label="Request URL" :span="2">
           {{ currentLog.requestUrl }}
         </a-descriptions-item>
-        <a-descriptions-item label="请求参数" :span="2">
+        <a-descriptions-item label="Request Params" :span="2">
           <pre style="max-height: 200px; overflow: auto;">{{ JSON.stringify(currentLog.requestParams, null, 2) }}</pre>
         </a-descriptions-item>
-        <a-descriptions-item v-if="currentLog.errorMessage" label="错误信息" :span="2">
+        <a-descriptions-item v-if="currentLog.errorMessage" label="Error Message" :span="2">
           {{ currentLog.errorMessage }}
         </a-descriptions-item>
-        <a-descriptions-item label="IP地址">
+        <a-descriptions-item label="IP Address">
           {{ currentLog.ipAddress }}
         </a-descriptions-item>
-        <a-descriptions-item label="操作时间">
+        <a-descriptions-item label="Created At">
           {{ currentLog.createdAt }}
         </a-descriptions-item>
       </a-descriptions>
@@ -158,15 +158,15 @@ const pagination = reactive({
 
 const columns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: '用户名', dataIndex: 'username', key: 'username', width: 120 },
-  { title: '操作类型', dataIndex: 'operationType', key: 'operationType', width: 100 },
-  { title: '操作模块', dataIndex: 'operationModule', key: 'operationModule', width: 120 },
-  { title: '操作描述', key: 'operationDesc', width: 200 },
-  { title: '请求URL', key: 'requestUrl', width: 200 },
-  { title: '结果', key: 'responseResult', width: 80 },
-  { title: 'IP地址', dataIndex: 'ipAddress', key: 'ipAddress', width: 120 },
-  { title: '操作时间', dataIndex: 'createdAt', key: 'createdAt', width: 180 },
-  { title: '操作', key: 'actions', width: 80, fixed: 'right' as const }
+  { title: 'Username', dataIndex: 'username', key: 'username', width: 120 },
+  { title: 'Operation Type', dataIndex: 'operationType', key: 'operationType', width: 100 },
+  { title: 'Module', dataIndex: 'operationModule', key: 'operationModule', width: 120 },
+  { title: 'Description', key: 'operationDesc', width: 200 },
+  { title: 'Request URL', key: 'requestUrl', width: 200 },
+  { title: 'Result', key: 'responseResult', width: 80 },
+  { title: 'IP Address', dataIndex: 'ipAddress', key: 'ipAddress', width: 120 },
+  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt', width: 180 },
+  { title: 'Actions', key: 'actions', width: 80, fixed: 'right' as const }
 ]
 
 function handleTimeRangeChange(dates: any) {

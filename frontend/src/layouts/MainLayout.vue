@@ -2,8 +2,8 @@
   <a-layout style="min-height: 100vh">
     <a-layout-sider v-model:collapsed="collapsed" :width="240" collapsible>
       <div class="logo">
-        <h2 v-if="!collapsed">数据脱敏系统</h2>
-        <h2 v-else>DMS</h2>
+        <h2 v-if="!collapsed">Cloudberry</h2>
+        <h2 v-else>CLD</h2>
       </div>
       <a-menu
         v-model:selectedKeys="selectedKeys"
@@ -54,7 +54,7 @@
               <a-menu>
                 <a-menu-item key="logout" @click="handleLogout">
                   <LogoutOutlined />
-                  退出登录
+                  Logout
                 </a-menu-item>
               </a-menu>
             </template>
@@ -96,19 +96,19 @@ const selectedKeys = ref<string[]>([])
 const openKeys = ref<string[]>([])
 
 const menuItems = [
-  { path: '/dashboard', title: '首页', icon: HomeOutlined },
-  { path: '/datasources', title: '数据源管理', icon: DatabaseOutlined },
-  { path: '/masking', title: '数据脱敏', icon: SafetyOutlined },
-  { path: '/lineage', title: '血缘分析', icon: BranchesOutlined },
-  { path: '/sync', title: '翻数工具', icon: SwapOutlined },
+  { path: '/dashboard', title: 'Dashboard', icon: HomeOutlined },
+  { path: '/datasources', title: 'Data Sources', icon: DatabaseOutlined },
+  { path: '/masking', title: 'Data Masking', icon: SafetyOutlined },
+  { path: '/lineage', title: 'Lineage Analysis', icon: BranchesOutlined },
+  { path: '/sync', title: 'Data Sync', icon: SwapOutlined },
   {
     path: '/system',
-    title: '系统管理',
+    title: 'System',
     icon: SettingOutlined,
     children: [
-      { path: '/system/users', title: '用户管理' },
-      { path: '/system/roles', title: '角色管理' },
-      { path: '/system/audit', title: '审计日志' }
+      { path: '/system/users', title: 'Users' },
+      { path: '/system/roles', title: 'Roles' },
+      { path: '/system/audit', title: 'Audit Logs' }
     ]
   }
 ]
@@ -119,7 +119,7 @@ function navigateTo(path: string) {
 
 function handleLogout() {
   userStore.logout()
-  message.success('已退出登录')
+  message.success('Logged out successfully')
   router.push('/login')
 }
 </script>

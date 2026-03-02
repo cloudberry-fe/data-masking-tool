@@ -2,26 +2,26 @@
   <div class="masking-detail">
     <a-page-header
       :title="task?.taskName"
-      sub-title="脱敏任务配置"
+      sub-title="Masking Task Configuration"
       @back="$router.back()"
     >
       <template #extra>
         <a-space>
           <a-button type="primary" @click="executeTask" :loading="executing">
             <PlayCircleOutlined />
-            执行任务
+            Execute Task
           </a-button>
         </a-space>
       </template>
     </a-page-header>
 
     <a-tabs v-model:activeKey="activeTab">
-      <a-tab-pane key="tables" tab="表配置">
+      <a-tab-pane key="tables" tab="Table Configuration">
         <div class="tab-content">
           <div class="action-bar">
             <a-button type="primary" @click="showTableModal">
               <PlusOutlined />
-              添加表
+              Add Table
             </a-button>
           </div>
 
@@ -35,20 +35,20 @@
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
                 <a-tag :color="record.enabled ? 'success' : 'default'">
-                  {{ record.enabled ? '启用' : '禁用' }}
+                  {{ record.enabled ? 'Enabled' : 'Disabled' }}
                 </a-tag>
               </template>
               <template v-if="column.key === 'actions'">
                 <a-space>
                   <a-button type="link" size="small" @click="manageColumns(record)">
-                    字段配置
+                    Columns
                   </a-button>
                   <a-button type="link" size="small" @click="showTableModal(record)">
-                    编辑
+                    Edit
                   </a-button>
-                  <a-popconfirm title="确定删除？" @confirm="deleteTable(record.id)">
+                  <a-popconfirm title="Are you sure you want to delete?" @confirm="deleteTable(record.id)">
                     <a-button type="link" size="small" danger>
-                      删除
+                      Delete
                     </a-button>
                   </a-popconfirm>
                 </a-space>
@@ -58,7 +58,7 @@
         </div>
       </a-tab-pane>
 
-      <a-tab-pane key="executions" tab="执行历史">
+      <a-tab-pane key="executions" tab="Execution History">
         <div class="tab-content">
           <a-table
             :columns="executionColumns"
@@ -79,35 +79,35 @@
       </a-tab-pane>
     </a-tabs>
 
-    <!-- 表配置弹窗 -->
+    <!-- Table Configuration Modal -->
     <a-modal
-      :title="editingTable ? '编辑表' : '添加表'"
+      :title="editingTable ? 'Edit Table' : 'Add Table'"
       v-model:open="tableModalVisible"
       @ok="handleTableModalOk"
       @cancel="tableModalVisible = false"
     >
       <a-form ref="tableFormRef" :model="tableFormState" :label-col="{ span: 6 }">
-        <a-form-item label="表名" name="tableName" :rules="[{ required: true }]">
-          <a-input v-model:value="tableFormState.tableName" placeholder="请输入" />
+        <a-form-item label="Table Name" name="tableName" :rules="[{ required: true }]">
+          <a-input v-model:value="tableFormState.tableName" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="源表名" name="sourceTable">
-          <a-input v-model:value="tableFormState.sourceTable" placeholder="默认同表名" />
+        <a-form-item label="Source Table" name="sourceTable">
+          <a-input v-model:value="tableFormState.sourceTable" placeholder="Same as table name" />
         </a-form-item>
-        <a-form-item label="目标表名" name="targetTable">
-          <a-input v-model:value="tableFormState.targetTable" placeholder="默认表名_masked" />
+        <a-form-item label="Target Table" name="targetTable">
+          <a-input v-model:value="tableFormState.targetTable" placeholder="table_name_masked" />
         </a-form-item>
-        <a-form-item label="执行顺序" name="orderNo">
+        <a-form-item label="Order" name="orderNo">
           <a-input-number v-model:value="tableFormState.orderNo" style="width: 100%" />
         </a-form-item>
-        <a-form-item label="启用" name="enabled">
+        <a-form-item label="Enabled" name="enabled">
           <a-switch v-model:checked="tableFormState.enabled" />
         </a-form-item>
       </a-form>
     </a-modal>
 
-    <!-- 字段配置抽屉 -->
+    <!-- Column Configuration Drawer -->
     <a-drawer
-      title="字段配置"
+      title="Column Configuration"
       :width="720"
       v-model:open="columnDrawerVisible"
     >
@@ -116,11 +116,11 @@
           <a-space>
             <a-button type="primary" size="small" @click="showQuickAddColumns">
               <PlusOutlined />
-              从表选择
+              Select from Table
             </a-button>
             <a-button size="small" @click="showColumnModal">
               <PlusOutlined />
-              手动添加
+              Add Manually
             </a-button>
           </a-space>
         </div>
@@ -139,11 +139,11 @@
             <template v-if="column.key === 'actions'">
               <a-space>
                 <a-button type="link" size="small" @click="showColumnModal(record)">
-                  编辑
+                  Edit
                 </a-button>
-                <a-popconfirm title="确定删除？" @confirm="deleteColumn(record.id)">
+                <a-popconfirm title="Are you sure you want to delete?" @confirm="deleteColumn(record.id)">
                   <a-button type="link" size="small" danger>
-                    删除
+                    Delete
                   </a-button>
                 </a-popconfirm>
               </a-space>
@@ -153,29 +153,29 @@
       </div>
     </a-drawer>
 
-    <!-- 字段配置弹窗 -->
+    <!-- Column Configuration Modal -->
     <a-modal
-      :title="editingColumn ? '编辑字段' : '添加字段'"
+      :title="editingColumn ? 'Edit Column' : 'Add Column'"
       v-model:open="columnModalVisible"
       @ok="handleColumnModalOk"
       @cancel="columnModalVisible = false"
       width="560px"
     >
       <a-form ref="columnFormRef" :model="columnFormState" :label-col="{ span: 6 }">
-        <a-form-item label="字段名" name="columnName" :rules="[{ required: true }]">
-          <a-input v-model:value="columnFormState.columnName" placeholder="请输入" />
+        <a-form-item label="Column Name" name="columnName" :rules="[{ required: true }]">
+          <a-input v-model:value="columnFormState.columnName" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="数据类型" name="dataType">
-          <a-input v-model:value="columnFormState.dataType" placeholder="varchar, int等" />
+        <a-form-item label="Data Type" name="dataType">
+          <a-input v-model:value="columnFormState.dataType" placeholder="varchar, int, etc." />
         </a-form-item>
-        <a-form-item label="脱敏算法" name="maskingAlgorithm" :rules="[{ required: true }]">
-          <a-select v-model:value="columnFormState.maskingAlgorithm" placeholder="请选择">
+        <a-form-item label="Masking Algorithm" name="maskingAlgorithm" :rules="[{ required: true }]">
+          <a-select v-model:value="columnFormState.maskingAlgorithm" placeholder="Please select">
             <a-select-option v-for="algo in algorithms" :key="algo.code" :value="algo.code">
               {{ algo.name }} - {{ algo.description }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="说明" name="description">
+        <a-form-item label="Description" name="description">
           <a-textarea v-model:value="columnFormState.description" :rows="2" />
         </a-form-item>
       </a-form>
@@ -201,7 +201,7 @@ const task = ref<any>(null)
 const activeTab = ref('tables')
 const executing = ref(false)
 
-// 表相关
+// Table related
 const tables = ref<any[]>([])
 const tableModalVisible = ref(false)
 const tableFormRef = ref()
@@ -215,7 +215,7 @@ const tableFormState = reactive({
   enabled: true
 })
 
-// 字段相关
+// Column related
 const columnDrawerVisible = ref(false)
 const columnModalVisible = ref(false)
 const columnFormRef = ref()
@@ -231,34 +231,34 @@ const columnFormState = reactive({
   description: ''
 })
 
-// 执行历史
+// Execution history
 const executions = ref<any[]>([])
 
 const tableColumns = [
-  { title: '表名', dataIndex: 'tableName', key: 'tableName' },
-  { title: '源表', dataIndex: 'sourceTable', key: 'sourceTable' },
-  { title: '目标表', dataIndex: 'targetTable', key: 'targetTable' },
-  { title: '顺序', dataIndex: 'orderNo', key: 'orderNo', width: 80 },
-  { title: '状态', key: 'status', width: 80 },
-  { title: '操作', key: 'actions', width: 200 }
+  { title: 'Table Name', dataIndex: 'tableName', key: 'tableName' },
+  { title: 'Source Table', dataIndex: 'sourceTable', key: 'sourceTable' },
+  { title: 'Target Table', dataIndex: 'targetTable', key: 'targetTable' },
+  { title: 'Order', dataIndex: 'orderNo', key: 'orderNo', width: 80 },
+  { title: 'Status', key: 'status', width: 80 },
+  { title: 'Actions', key: 'actions', width: 200 }
 ]
 
 const columnColumns = [
-  { title: '字段名', dataIndex: 'columnName', key: 'columnName' },
-  { title: '类型', dataIndex: 'dataType', key: 'dataType', width: 120 },
-  { title: '脱敏算法', key: 'algorithm', width: 120 },
-  { title: '说明', dataIndex: 'description', key: 'description' },
-  { title: '操作', key: 'actions', width: 140 }
+  { title: 'Column Name', dataIndex: 'columnName', key: 'columnName' },
+  { title: 'Type', dataIndex: 'dataType', key: 'dataType', width: 120 },
+  { title: 'Masking Algorithm', key: 'algorithm', width: 120 },
+  { title: 'Description', dataIndex: 'description', key: 'description' },
+  { title: 'Actions', key: 'actions', width: 140 }
 ]
 
 const executionColumns = [
-  { title: '执行编号', dataIndex: 'executionNo', key: 'executionNo' },
-  { title: '触发类型', dataIndex: 'triggerType', key: 'triggerType' },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '开始时间', dataIndex: 'startTime', key: 'startTime' },
-  { title: '总记录数', dataIndex: 'totalRecords', key: 'totalRecords' },
-  { title: '成功', dataIndex: 'successRecords', key: 'successRecords' },
-  { title: '失败', dataIndex: 'failedRecords', key: 'failedRecords' }
+  { title: 'Execution ID', dataIndex: 'executionNo', key: 'executionNo' },
+  { title: 'Trigger Type', dataIndex: 'triggerType', key: 'triggerType' },
+  { title: 'Status', key: 'status', width: 100 },
+  { title: 'Start Time', dataIndex: 'startTime', key: 'startTime' },
+  { title: 'Total Records', dataIndex: 'totalRecords', key: 'totalRecords' },
+  { title: 'Success', dataIndex: 'successRecords', key: 'successRecords' },
+  { title: 'Failed', dataIndex: 'failedRecords', key: 'failedRecords' }
 ]
 
 async function loadTask() {
@@ -267,7 +267,7 @@ async function loadTask() {
     task.value = data
     tables.value = data.tables || []
   } catch (error) {
-    message.error('加载任务失败')
+    message.error('Failed to load task')
   }
 }
 
@@ -317,13 +317,13 @@ async function handleTableModalOk() {
   try {
     if (editingTable.value) {
       await request.put(`/masking/tables/${tableFormState.id}`, tableFormState)
-      message.success('更新成功')
+      message.success('Updated successfully')
     } else {
       await request.post(`/masking/tasks/${taskId.value}/tables`, {
         taskId: taskId.value,
         ...tableFormState
       })
-      message.success('添加成功')
+      message.success('Added successfully')
     }
     tableModalVisible.value = false
     loadTask()
@@ -335,7 +335,7 @@ async function handleTableModalOk() {
 async function deleteTable(id: number) {
   try {
     await request.delete(`/masking/tables/${id}`)
-    message.success('删除成功')
+    message.success('Deleted successfully')
     loadTask()
   } catch (error) {
     //
@@ -375,13 +375,13 @@ async function handleColumnModalOk() {
   try {
     if (editingColumn.value) {
       await request.put(`/masking/columns/${columnFormState.id}`, columnFormState)
-      message.success('更新成功')
+      message.success('Updated successfully')
     } else {
       await request.post(`/masking/tables/${currentTable.value.id}/columns`, {
         tableId: currentTable.value.id,
         ...columnFormState
       })
-      message.success('添加成功')
+      message.success('Added successfully')
     }
     columnModalVisible.value = false
     loadTask()
@@ -393,7 +393,7 @@ async function handleColumnModalOk() {
 async function deleteColumn(id: number) {
   try {
     await request.delete(`/masking/columns/${id}`)
-    message.success('删除成功')
+    message.success('Deleted successfully')
     loadTask()
   } catch (error) {
     //
@@ -401,14 +401,14 @@ async function deleteColumn(id: number) {
 }
 
 function showQuickAddColumns() {
-  message.info('从数据源表选择字段功能待实现')
+  message.info('Select columns from data source table feature coming soon')
 }
 
 async function executeTask() {
   try {
     executing.value = true
     await request.post(`/masking/tasks/${taskId.value}/execute`)
-    message.success('任务已提交执行')
+    message.success('Task submitted for execution')
     loadExecutions()
   } finally {
     executing.value = false
@@ -427,10 +427,10 @@ function getExecutionStatusColor(status: string): string {
 
 function getExecutionStatusText(status: string): string {
   const texts: Record<string, string> = {
-    SUCCESS: '成功',
-    FAILED: '失败',
-    RUNNING: '执行中',
-    PENDING: '等待中'
+    SUCCESS: 'Success',
+    FAILED: 'Failed',
+    RUNNING: 'Running',
+    PENDING: 'Pending'
   }
   return texts[status] || status
 }

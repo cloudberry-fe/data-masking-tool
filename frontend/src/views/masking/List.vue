@@ -4,28 +4,28 @@
       <a-space>
         <a-input-search
           v-model:value="search.keyword"
-          placeholder="搜索任务名称"
+          placeholder="Search task name"
           style="width: 240px"
           @search="loadData"
           allow-clear
         />
         <a-select
           v-model:value="search.status"
-          placeholder="状态"
+          placeholder="Status"
           style="width: 140px"
           allow-clear
           @change="loadData"
         >
-          <a-select-option value="DRAFT">草稿</a-select-option>
-          <a-select-option value="READY">就绪</a-select-option>
-          <a-select-option value="RUNNING">执行中</a-select-option>
-          <a-select-option value="PAUSED">已暂停</a-select-option>
+          <a-select-option value="DRAFT">Draft</a-select-option>
+          <a-select-option value="READY">Ready</a-select-option>
+          <a-select-option value="RUNNING">Running</a-select-option>
+          <a-select-option value="PAUSED">Paused</a-select-option>
         </a-select>
       </a-space>
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          新建任务
+          New Task
         </a-button>
       </a-space>
     </div>
@@ -45,28 +45,28 @@
           </a-tag>
         </template>
         <template v-if="column.key === 'scheduleType'">
-          {{ record.scheduleType === 'CRON' ? '定时调度' : '手动执行' }}
+          {{ record.scheduleType === 'CRON' ? 'Scheduled' : 'Manual' }}
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="goToDetail(record)">
-              配置
+              Configure
             </a-button>
             <a-popconfirm
               v-if="record.status !== 'RUNNING'"
-              title="确定要执行该任务吗？"
+              title="Are you sure you want to execute this task?"
               @confirm="executeTask(record)"
             >
               <a-button type="link" size="small" type="primary">
-                执行
+                Execute
               </a-button>
             </a-popconfirm>
             <a-button type="link" size="small" @click="showEditModal(record)">
-              编辑
+              Edit
             </a-button>
-            <a-popconfirm title="确定要删除该任务吗？" @confirm="deleteTask(record.id)">
+            <a-popconfirm title="Are you sure you want to delete this task?" @confirm="deleteTask(record.id)">
               <a-button type="link" size="small" danger>
-                删除
+                Delete
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -74,9 +74,9 @@
       </template>
     </a-table>
 
-    <!-- 新建/编辑弹窗 -->
+    <!-- Create/Edit Modal -->
     <a-modal
-      :title="isEdit ? '编辑任务' : '新建任务'"
+      :title="isEdit ? 'Edit Task' : 'New Task'"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
@@ -89,33 +89,33 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="任务名称" name="taskName" :rules="[{ required: true, message: '请输入' }]">
-          <a-input v-model:value="formState.taskName" placeholder="请输入" />
+        <a-form-item label="Task Name" name="taskName" :rules="[{ required: true, message: 'Please enter' }]">
+          <a-input v-model:value="formState.taskName" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="数据源" name="datasourceId" :rules="[{ required: true, message: '请选择' }]">
-          <a-select v-model:value="formState.datasourceId" placeholder="请选择" show-search>
+        <a-form-item label="Data Source" name="datasourceId" :rules="[{ required: true, message: 'Please select' }]">
+          <a-select v-model:value="formState.datasourceId" placeholder="Please select" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="源Schema" name="sourceSchema">
+        <a-form-item label="Source Schema" name="sourceSchema">
           <a-input v-model:value="formState.sourceSchema" placeholder="public" />
         </a-form-item>
-        <a-form-item label="目标Schema" name="targetSchema">
+        <a-form-item label="Target Schema" name="targetSchema">
           <a-input v-model:value="formState.targetSchema" placeholder="public" />
         </a-form-item>
-        <a-form-item label="调度类型" name="scheduleType">
+        <a-form-item label="Schedule Type" name="scheduleType">
           <a-select v-model:value="formState.scheduleType">
-            <a-select-option value="MANUAL">手动执行</a-select-option>
-            <a-select-option value="CRON">定时调度</a-select-option>
+            <a-select-option value="MANUAL">Manual</a-select-option>
+            <a-select-option value="CRON">Scheduled</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item v-if="formState.scheduleType === 'CRON'" label="Cron表达式" name="cronExpression">
+        <a-form-item v-if="formState.scheduleType === 'CRON'" label="Cron Expression" name="cronExpression">
           <a-input v-model:value="formState.cronExpression" placeholder="0 0 2 * * ?" />
         </a-form-item>
-        <a-form-item label="描述" name="description">
-          <a-textarea v-model:value="formState.description" :rows="3" placeholder="请输入" />
+        <a-form-item label="Description" name="description">
+          <a-textarea v-model:value="formState.description" :rows="3" placeholder="Please enter" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -162,11 +162,11 @@ const formState = reactive({
 })
 
 const columns = [
-  { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '调度类型', key: 'scheduleType', width: 100 },
-  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt' },
-  { title: '操作', key: 'actions', width: 280, fixed: 'right' as const }
+  { title: 'Task Name', dataIndex: 'taskName', key: 'taskName' },
+  { title: 'Status', key: 'status', width: 100 },
+  { title: 'Schedule Type', key: 'scheduleType', width: 100 },
+  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt' },
+  { title: 'Actions', key: 'actions', width: 280, fixed: 'right' as const }
 ]
 
 async function loadDatasources() {
@@ -239,10 +239,10 @@ async function handleModalOk() {
 
     if (isEdit.value) {
       await request.put(`/masking/tasks/${formState.id}`, formState)
-      message.success('更新成功')
+      message.success('Updated successfully')
     } else {
       await request.post('/masking/tasks', formState)
-      message.success('创建成功')
+      message.success('Created successfully')
     }
 
     modalVisible.value = false
@@ -263,7 +263,7 @@ function goToDetail(record: any) {
 async function executeTask(record: any) {
   try {
     await request.post(`/masking/tasks/${record.id}/execute`)
-    message.success('任务已提交执行')
+    message.success('Task submitted for execution')
     loadData()
   } catch (error) {
     //
@@ -273,7 +273,7 @@ async function executeTask(record: any) {
 async function deleteTask(id: number) {
   try {
     await request.delete(`/masking/tasks/${id}`)
-    message.success('删除成功')
+    message.success('Deleted successfully')
     loadData()
   } catch (error) {
     //
@@ -294,12 +294,12 @@ function getStatusColor(status: string): string {
 
 function getStatusText(status: string): string {
   const texts: Record<string, string> = {
-    DRAFT: '草稿',
-    READY: '就绪',
-    RUNNING: '执行中',
-    PAUSED: '已暂停',
-    SUCCESS: '成功',
-    FAILED: '失败'
+    DRAFT: 'Draft',
+    READY: 'Ready',
+    RUNNING: 'Running',
+    PAUSED: 'Paused',
+    SUCCESS: 'Success',
+    FAILED: 'Failed'
   }
   return texts[status] || status
 }

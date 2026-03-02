@@ -1,5 +1,5 @@
 """
-通用Schema定义
+Common Schema Definitions
 """
 from typing import Generic, List, Optional, TypeVar, Any
 from pydantic import BaseModel, Field, ConfigDict
@@ -9,11 +9,11 @@ T = TypeVar("T")
 
 
 class Response(BaseModel, Generic[T]):
-    """通用响应"""
+    """Generic response"""
 
-    code: int = Field(default=0, description="响应码，0表示成功")
-    message: str = Field(default="success", description="响应消息")
-    data: Optional[T] = Field(default=None, description="响应数据")
+    code: int = Field(default=0, description="Response code, 0 indicates success")
+    message: str = Field(default="success", description="Response message")
+    data: Optional[T] = Field(default=None, description="Response data")
 
     model_config = ConfigDict(json_schema_extra={
         "example": {
@@ -25,37 +25,37 @@ class Response(BaseModel, Generic[T]):
 
 
 class PageResponse(BaseModel, Generic[T]):
-    """分页响应"""
+    """Paginated response"""
 
-    items: List[T] = Field(description="数据列表")
-    total: int = Field(description="总数")
-    page: int = Field(description="当前页")
-    page_size: int = Field(description="每页数量")
+    items: List[T] = Field(description="Data list")
+    total: int = Field(description="Total count")
+    page: int = Field(description="Current page")
+    page_size: int = Field(description="Items per page")
 
 
 class PageQuery(BaseModel):
-    """分页查询参数"""
+    """Paginated query parameters"""
 
-    page: int = Field(default=1, ge=1, description="页码")
-    page_size: int = Field(default=20, ge=1, le=100, description="每页数量")
-    keyword: Optional[str] = Field(default=None, description="搜索关键词")
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=20, ge=1, le=100, description="Items per page")
+    keyword: Optional[str] = Field(default=None, description="Search keyword")
 
 
 class IdList(BaseModel):
-    """ID列表"""
+    """ID list"""
 
-    ids: List[int] = Field(description="ID列表")
+    ids: List[int] = Field(description="ID list")
 
 
 class Option(BaseModel):
-    """选项"""
+    """Option"""
 
-    label: str = Field(description="显示标签")
-    value: Any = Field(description="选项值")
+    label: str = Field(description="Display label")
+    value: Any = Field(description="Option value")
 
 
 class TimestampMixin(BaseModel):
-    """时间戳混入"""
+    """Timestamp mixin"""
 
-    created_at: Optional[datetime] = Field(default=None, description="创建时间")
-    updated_at: Optional[datetime] = Field(default=None, description="更新时间")
+    created_at: Optional[datetime] = Field(default=None, description="Created time")
+    updated_at: Optional[datetime] = Field(default=None, description="Updated time")

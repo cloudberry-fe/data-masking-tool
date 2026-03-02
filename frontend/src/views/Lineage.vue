@@ -1,16 +1,16 @@
 <template>
   <div class="lineage-page">
     <a-card>
-      <template #title>血缘分析</template>
+      <template #title>Lineage Analysis</template>
       <template #extra>
         <a-space>
-          <a-select v-model:value="selectedDatasource" style="width: 240px" placeholder="选择数据源">
+          <a-select v-model:value="selectedDatasource" style="width: 240px" placeholder="Select data source">
             <a-select-option v-for="ds in datasources" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
           </a-select>
           <a-button type="primary" @click="loadLineage" :loading="loading">
-            分析
+            Analyze
           </a-button>
         </a-space>
       </template>
@@ -42,7 +42,7 @@ async function loadDatasources() {
 
 async function loadLineage() {
   if (!selectedDatasource.value) {
-    message.warning('请选择数据源')
+    message.warning('Please select a data source')
     return
   }
 
@@ -59,7 +59,7 @@ async function loadLineage() {
 
 async function renderGraph(data: any) {
   try {
-    // 动态导入 G6
+    // Dynamically import G6
     const G6 = await import('@antv/g6')
 
     if (graph) {
@@ -126,8 +126,8 @@ async function renderGraph(data: any) {
     graph.data({ nodes, edges })
     graph.render()
   } catch (error) {
-    console.error('渲染血缘图失败:', error)
-    message.info('血缘图谱需要安装 @antv/g6 依赖')
+    console.error('Failed to render lineage graph:', error)
+    message.info('Lineage graph requires @antv/g6 dependency')
   }
 }
 

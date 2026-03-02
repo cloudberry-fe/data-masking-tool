@@ -1,32 +1,31 @@
 """
-认证服务
+Authentication Service
 """
 import logging
 from typing import Optional, Tuple
 from datetime import timedelta, datetime
 
 from sqlalchemy.orm import Session
-from sqlalchemy import select, or_
+from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.security import (
     verify_password,
     get_password_hash,
     create_access_token,
-    decode_access_token,
 )
-from app.models.system import User, Role, Permission
+from app.models.system import User, Role, Permission, UserRole, RolePermission
 from app.schemas.auth import LoginResponse
 
 logger = logging.getLogger(__name__)
 
 
 class AuthService:
-    """认证服务"""
+    """Authentication service"""
 
     @staticmethod
     def authenticate_user(db: Session, username: str, password: str) -> Optional[User]:
-        """用户认证"""
+        """Authenticate user"""
         stmt = select(User).where(User.username == username)
         user = db.scalar(stmt)
         if not user:
@@ -39,13 +38,13 @@ class AuthService:
 
     @staticmethod
     def get_user_by_id(db: Session, user_id: int) -> Optional[User]:
-        """根据ID获取用户"""
+        """Get user by ID"""
         stmt = select(User).where(User.id == user_id)
         return db.scalar(stmt)
 
     @staticmethod
     def get_user_permissions(db: Session, user: User) -> list:
-        """获取用户权限列表"""
+        """Get user permission list"""
         stmt = (
             select(Permission)
             .join(Role.permissions)
@@ -58,7 +57,7 @@ class AuthService:
 
     @staticmethod
     def get_user_roles(db: Session, user: User) -> list:
-        """获取用户角色列表"""
+        """Get user role list"""
         stmt = (
             select(Role)
             .join(User.roles)
@@ -69,7 +68,7 @@ class AuthService:
 
     @staticmethod
     def create_login_response(user: User, roles: list, permissions: list) -> LoginResponse:
-        """创建登录响应"""
+        """Create login response"""
         access_token_expires = timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES)
         access_token = create_access_token(
             data={"sub": str(user.id), "username": user.username},
@@ -88,44 +87,44 @@ class AuthService:
 
     @staticmethod
     def change_password(db: Session, user: User, old_password: str, new_password: str) -> Tuple[bool, str]:
-        """修改密码"""
+        """Change user password"""
         if not verify_password(old_password, user.password_hash):
-            return False, "原密码错误"
+            return False, "Current password is incorrect"
         user.password_hash = get_password_hash(new_password)
         db.add(user)
         db.commit()
-        return True, "密码修改成功"
+        return True, "Password changed successfully"
 
     @staticmethod
     def init_default_data(db: Session):
-        """初始化默认数据"""
-        # 检查是否已有管理员用户
+        """Initialize default data"""
+        # Check if admin user already exists
         stmt = select(User).where(User.username == "admin")
         admin = db.scalar(stmt)
         if admin:
-            logger.info("默认数据已存在，跳过初始化")
+            logger.info("Default data already exists, skipping initialization")
             return
 
-        logger.info("开始初始化默认数据...")
+        logger.info("Starting default data initialization...")
 
-        # 创建默认权限
+        # Create default permissions
         permissions_data = [
-            ("datasource:view", "数据源查看", "datasource"),
-            ("datasource:create", "数据源创建", "datasource"),
-            ("datasource:update", "数据源编辑", "datasource"),
-            ("datasource:delete", "数据源删除", "datasource"),
-            ("masking:view", "脱敏任务查看", "masking"),
-            ("masking:create", "脱敏任务创建", "masking"),
-            ("masking:update", "脱敏任务编辑", "masking"),
-            ("masking:execute", "脱敏任务执行", "masking"),
-            ("masking:delete", "脱敏任务删除", "masking"),
-            ("lineage:view", "血缘分析查看", "lineage"),
-            ("sync:view", "翻数任务查看", "sync"),
-            ("sync:create", "翻数任务创建", "sync"),
-            ("sync:execute", "翻数任务执行", "sync"),
-            ("system:user", "用户管理", "system"),
-            ("system:role", "角色管理", "system"),
-            ("system:audit", "审计日志", "system"),
+            ("datasource:view", "View Data Sources", "datasource"),
+            ("datasource:create", "Create Data Sources", "datasource"),
+            ("datasource:update", "Update Data Sources", "datasource"),
+            ("datasource:delete", "Delete Data Sources", "datasource"),
+            ("masking:view", "View Masking Tasks", "masking"),
+            ("masking:create", "Create Masking Tasks", "masking"),
+            ("masking:update", "Update Masking Tasks", "masking"),
+            ("masking:execute", "Execute Masking Tasks", "masking"),
+            ("masking:delete", "Delete Masking Tasks", "masking"),
+            ("lineage:view", "View Lineage Analysis", "lineage"),
+            ("sync:view", "View Sync Tasks", "sync"),
+            ("sync:create", "Create Sync Tasks", "sync"),
+            ("sync:execute", "Execute Sync Tasks", "sync"),
+            ("system:user", "User Management", "system"),
+            ("system:role", "Role Management", "system"),
+            ("system:audit", "Audit Logs", "system"),
         ]
 
         permissions = []
@@ -136,45 +135,43 @@ class AuthService:
 
         db.flush()
 
-        # 创建管理员角色
+        # Create admin role
         admin_role = Role(
             role_code="admin",
-            role_name="超级管理员",
-            description="拥有所有权限的系统管理员"
+            role_name="Administrator",
+            description="System administrator with all permissions"
         )
         db.add(admin_role)
         db.flush()
 
-        # 给管理员角色分配所有权限
-        from app.models.system import RolePermission
+        # Assign all permissions to admin role
         for perm in permissions:
             rp = RolePermission(role_id=admin_role.id, permission_id=perm.id)
             db.add(rp)
 
-        # 创建普通用户角色
+        # Create regular user role
         user_role = Role(
             role_code="user",
-            role_name="普通用户",
-            description="普通用户角色"
+            role_name="Regular User",
+            description="Regular user role"
         )
         db.add(user_role)
 
-        # 创建管理员用户
+        # Create admin user
         admin_user = User(
             username="admin",
             password_hash=get_password_hash("admin123"),
-            real_name="系统管理员",
+            real_name="System Administrator",
             email="admin@example.com",
             status=1,
         )
         db.add(admin_user)
         db.flush()
 
-        # 给管理员用户分配角色
-        from app.models.system import UserRole
+        # Assign role to admin user
         ur = UserRole(user_id=admin_user.id, role_id=admin_role.id)
         db.add(ur)
 
         db.commit()
-        logger.info("默认数据初始化完成！")
-        logger.info("默认账号: admin / admin123")
+        logger.info("Default data initialization completed!")
+        logger.info("Default credentials: admin / admin123")

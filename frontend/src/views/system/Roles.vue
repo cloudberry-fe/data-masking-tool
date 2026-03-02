@@ -2,11 +2,11 @@
   <div class="roles-page">
     <a-row :gutter="24">
       <a-col :span="8">
-        <a-card title="角色列表">
+        <a-card title="Role List">
           <template #extra>
             <a-button type="primary" size="small" @click="showCreateModal">
               <PlusOutlined />
-              新增
+              Add
             </a-button>
           </template>
           <a-list
@@ -25,7 +25,7 @@
                     <a-button type="text" size="small" @click.stop="showEditModal(item)">
                       <EditOutlined />
                     </a-button>
-                    <a-popconfirm title="确定删除？" @confirm.stop="deleteRole(item.id)">
+                    <a-popconfirm title="Are you sure you want to delete?" @confirm.stop="deleteRole(item.id)">
                       <a-button type="text" size="small" danger>
                         <DeleteOutlined />
                       </a-button>
@@ -38,15 +38,15 @@
         </a-card>
       </a-col>
       <a-col :span="16">
-        <a-card v-if="selectedRole" title="角色详情">
+        <a-card v-if="selectedRole" title="Role Details">
           <a-descriptions :column="2" bordered size="small">
-            <a-descriptions-item label="角色编码">
+            <a-descriptions-item label="Role Code">
               {{ selectedRole.roleCode }}
             </a-descriptions-item>
-            <a-descriptions-item label="角色名称">
+            <a-descriptions-item label="Role Name">
               {{ selectedRole.roleName }}
             </a-descriptions-item>
-            <a-descriptions-item label="描述" :span="2">
+            <a-descriptions-item label="Description" :span="2">
               {{ selectedRole.description || '-' }}
             </a-descriptions-item>
           </a-descriptions>
@@ -55,9 +55,9 @@
 
           <div class="permissions-section">
             <div class="section-header">
-              <span>权限配置</span>
+              <span>Permission Configuration</span>
               <a-button type="primary" size="small" @click="savePermissions">
-                保存
+                Save
               </a-button>
             </div>
             <a-checkbox-group v-model:value="selectedPermissionIds">
@@ -74,13 +74,13 @@
             </a-checkbox-group>
           </div>
         </a-card>
-        <a-empty v-else description="请选择一个角色" />
+        <a-empty v-else description="Please select a role" />
       </a-col>
     </a-row>
 
-    <!-- 新建/编辑角色弹窗 -->
+    <!-- Create/Edit Role Modal -->
     <a-modal
-      :title="isEdit ? '编辑角色' : '新增角色'"
+      :title="isEdit ? 'Edit Role' : 'Add Role'"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
@@ -93,14 +93,14 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="角色编码" name="roleCode" :rules="[{ required: true }]">
-          <a-input v-model:value="formState.roleCode" placeholder="请输入" :disabled="isEdit" />
+        <a-form-item label="Role Code" name="roleCode" :rules="[{ required: true }]">
+          <a-input v-model:value="formState.roleCode" placeholder="Please enter" :disabled="isEdit" />
         </a-form-item>
-        <a-form-item label="角色名称" name="roleName" :rules="[{ required: true }]">
-          <a-input v-model:value="formState.roleName" placeholder="请输入" />
+        <a-form-item label="Role Name" name="roleName" :rules="[{ required: true }]">
+          <a-input v-model:value="formState.roleName" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="描述" name="description">
-          <a-textarea v-model:value="formState.description" :rows="3" placeholder="请输入" />
+        <a-form-item label="Description" name="description">
+          <a-textarea v-model:value="formState.description" :rows="3" placeholder="Please enter" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -134,11 +134,11 @@ const formState = reactive({
 const groupedPermissions = computed(() => {
   const groups: Record<string, any> = {}
   const typeLabels: Record<string, string> = {
-    datasource: '数据源管理',
-    masking: '数据脱敏',
-    lineage: '血缘分析',
-    sync: '翻数工具',
-    system: '系统管理'
+    datasource: 'Data Sources',
+    masking: 'Data Masking',
+    lineage: 'Lineage Analysis',
+    sync: 'Data Sync',
+    system: 'System'
   }
 
   permissions.value.forEach(p => {
@@ -207,10 +207,10 @@ async function handleModalOk() {
 
     if (isEdit.value) {
       await request.put(`/system/roles/${formState.id}`, formState)
-      message.success('更新成功')
+      message.success('Updated successfully')
     } else {
       await request.post('/system/roles', formState)
-      message.success('创建成功')
+      message.success('Created successfully')
     }
 
     modalVisible.value = false
@@ -232,7 +232,7 @@ async function savePermissions() {
       roleId: selectedRole.value.id,
       permissionIds: selectedPermissionIds.value
     })
-    message.success('保存成功')
+    message.success('Saved successfully')
     loadRoles()
   } catch (error) {
     //
@@ -242,7 +242,7 @@ async function savePermissions() {
 async function deleteRole(id: number) {
   try {
     await request.delete(`/system/roles/${id}`)
-    message.success('删除成功')
+    message.success('Deleted successfully')
     if (selectedRole.value?.id === id) {
       selectedRole.value = null
     }

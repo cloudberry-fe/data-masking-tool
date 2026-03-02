@@ -4,7 +4,7 @@
       <a-space>
         <a-input-search
           v-model:value="search.keyword"
-          placeholder="搜索任务名称"
+          placeholder="Search task name"
           style="width: 240px"
           @search="loadData"
           allow-clear
@@ -13,7 +13,7 @@
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          新建任务
+          New Task
         </a-button>
       </a-space>
     </div>
@@ -28,7 +28,7 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'syncMode'">
-          {{ record.syncMode === 'FULL' ? '全量同步' : '增量同步' }}
+          {{ record.syncMode === 'FULL' ? 'Full Sync' : 'Incremental Sync' }}
         </template>
         <template v-if="column.key === 'status'">
           <a-tag :color="getStatusColor(record.status)">
@@ -37,17 +37,17 @@
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
-            <a-popconfirm title="确定要执行该任务吗？" @confirm="executeTask(record)">
+            <a-popconfirm title="Are you sure you want to execute this task?" @confirm="executeTask(record)">
               <a-button type="link" size="small" type="primary">
-                执行
+                Execute
               </a-button>
             </a-popconfirm>
             <a-button type="link" size="small" @click="showEditModal(record)">
-              编辑
+              Edit
             </a-button>
-            <a-popconfirm title="确定要删除该任务吗？" @confirm="deleteTask(record.id)">
+            <a-popconfirm title="Are you sure you want to delete this task?" @confirm="deleteTask(record.id)">
               <a-button type="link" size="small" danger>
-                删除
+                Delete
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -55,9 +55,9 @@
       </template>
     </a-table>
 
-    <!-- 新建/编辑弹窗 -->
+    <!-- Create/Edit Modal -->
     <a-modal
-      :title="isEdit ? '编辑任务' : '新建任务'"
+      :title="isEdit ? 'Edit Task' : 'New Task'"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
@@ -70,36 +70,36 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="任务名称" name="taskName" :rules="[{ required: true }]">
-          <a-input v-model:value="formState.taskName" placeholder="请输入" />
+        <a-form-item label="Task Name" name="taskName" :rules="[{ required: true }]">
+          <a-input v-model:value="formState.taskName" placeholder="Please enter" />
         </a-form-item>
-        <a-form-item label="源数据源" name="sourceDatasourceId" :rules="[{ required: true }]">
-          <a-select v-model:value="formState.sourceDatasourceId" placeholder="请选择" show-search>
+        <a-form-item label="Source Data Source" name="sourceDatasourceId" :rules="[{ required: true }]">
+          <a-select v-model:value="formState.sourceDatasourceId" placeholder="Please select" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="目标数据源" name="targetDatasourceId" :rules="[{ required: true }]">
-          <a-select v-model:value="formState.targetDatasourceId" placeholder="请选择" show-search>
+        <a-form-item label="Target Data Source" name="targetDatasourceId" :rules="[{ required: true }]">
+          <a-select v-model:value="formState.targetDatasourceId" placeholder="Please select" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="同步模式" name="syncMode">
+        <a-form-item label="Sync Mode" name="syncMode">
           <a-select v-model:value="formState.syncMode">
-            <a-select-option value="FULL">全量同步</a-select-option>
-            <a-select-option value="INCREMENTAL">增量同步</a-select-option>
+            <a-select-option value="FULL">Full Sync</a-select-option>
+            <a-select-option value="INCREMENTAL">Incremental Sync</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="调度类型" name="scheduleType">
+        <a-form-item label="Schedule Type" name="scheduleType">
           <a-select v-model:value="formState.scheduleType">
-            <a-select-option value="MANUAL">手动执行</a-select-option>
-            <a-select-option value="CRON">定时调度</a-select-option>
+            <a-select-option value="MANUAL">Manual</a-select-option>
+            <a-select-option value="CRON">Scheduled</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item v-if="formState.scheduleType === 'CRON'" label="Cron表达式" name="cronExpression">
+        <a-form-item v-if="formState.scheduleType === 'CRON'" label="Cron Expression" name="cronExpression">
           <a-input v-model:value="formState.cronExpression" placeholder="0 0 2 * * ?" />
         </a-form-item>
       </a-form>
@@ -142,12 +142,12 @@ const formState = reactive({
 })
 
 const columns = [
-  { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
-  { title: '同步模式', key: 'syncMode', width: 120 },
-  { title: '调度类型', dataIndex: 'scheduleType', key: 'scheduleType', width: 100 },
-  { title: '状态', key: 'status', width: 100 },
-  { title: '创建时间', dataIndex: 'createdAt', key: 'createdAt' },
-  { title: '操作', key: 'actions', width: 220, fixed: 'right' as const }
+  { title: 'Task Name', dataIndex: 'taskName', key: 'taskName' },
+  { title: 'Sync Mode', key: 'syncMode', width: 120 },
+  { title: 'Schedule Type', dataIndex: 'scheduleType', key: 'scheduleType', width: 100 },
+  { title: 'Status', key: 'status', width: 100 },
+  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt' },
+  { title: 'Actions', key: 'actions', width: 220, fixed: 'right' as const }
 ]
 
 async function loadDatasources() {
@@ -217,10 +217,10 @@ async function handleModalOk() {
 
     if (isEdit.value) {
       await request.put(`/sync/tasks/${formState.id}`, formState)
-      message.success('更新成功')
+      message.success('Updated successfully')
     } else {
       await request.post('/sync/tasks', formState)
-      message.success('创建成功')
+      message.success('Created successfully')
     }
 
     modalVisible.value = false
@@ -237,7 +237,7 @@ function handleModalCancel() {
 async function executeTask(record: any) {
   try {
     await request.post(`/sync/tasks/${record.id}/execute`)
-    message.success('任务已提交执行')
+    message.success('Task submitted for execution')
   } catch (error) {
     //
   }
@@ -246,7 +246,7 @@ async function executeTask(record: any) {
 async function deleteTask(id: number) {
   try {
     await request.delete(`/sync/tasks/${id}`)
-    message.success('删除成功')
+    message.success('Deleted successfully')
     loadData()
   } catch (error) {
     //
@@ -266,11 +266,11 @@ function getStatusColor(status: string): string {
 
 function getStatusText(status: string): string {
   const texts: Record<string, string> = {
-    DRAFT: '草稿',
-    READY: '就绪',
-    RUNNING: '执行中',
-    SUCCESS: '成功',
-    FAILED: '失败'
+    DRAFT: 'Draft',
+    READY: 'Ready',
+    RUNNING: 'Running',
+    SUCCESS: 'Success',
+    FAILED: 'Failed'
   }
   return texts[status] || status
 }

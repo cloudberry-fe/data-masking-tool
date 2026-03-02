@@ -3,7 +3,7 @@
     <a-row :gutter="16">
       <a-col :span="6">
         <a-card class="stat-card">
-          <a-statistic title="数据源数量" :value="stats.datasourceCount">
+          <a-statistic title="Data Sources" :value="stats.datasourceCount">
             <template #prefix>
               <DatabaseOutlined style="color: #1890ff" />
             </template>
@@ -12,7 +12,7 @@
       </a-col>
       <a-col :span="6">
         <a-card class="stat-card">
-          <a-statistic title="脱敏任务数" :value="stats.maskingTaskCount">
+          <a-statistic title="Masking Tasks" :value="stats.maskingTaskCount">
             <template #prefix>
               <SafetyOutlined style="color: #52c41a" />
             </template>
@@ -21,7 +21,7 @@
       </a-col>
       <a-col :span="6">
         <a-card class="stat-card">
-          <a-statistic title="翻数任务数" :value="stats.syncTaskCount">
+          <a-statistic title="Sync Tasks" :value="stats.syncTaskCount">
             <template #prefix>
               <SwapOutlined style="color: #722ed1" />
             </template>
@@ -30,7 +30,7 @@
       </a-col>
       <a-col :span="6">
         <a-card class="stat-card">
-          <a-statistic title="今日执行次数" :value="stats.todayExecutionCount">
+          <a-statistic title="Today's Executions" :value="stats.todayExecutionCount">
             <template #prefix>
               <PlayCircleOutlined style="color: #fa8c16" />
             </template>
@@ -41,33 +41,33 @@
 
     <a-row :gutter="16" style="margin-top: 24px">
       <a-col :span="16">
-        <a-card title="快捷操作">
+        <a-card title="Quick Actions">
           <a-space wrap>
             <a-button type="primary" @click="$router.push('/datasources')">
               <PlusOutlined />
-              新增数据源
+              Add Data Source
             </a-button>
             <a-button type="primary" @click="$router.push('/masking')">
               <PlusOutlined />
-              新建脱敏任务
+              New Masking Task
             </a-button>
             <a-button @click="$router.push('/lineage')">
               <BranchesOutlined />
-              血缘分析
+              Lineage Analysis
             </a-button>
             <a-button @click="$router.push('/sync')">
               <SwapOutlined />
-              翻数工具
+              Data Sync
             </a-button>
           </a-space>
         </a-card>
       </a-col>
       <a-col :span="8">
-        <a-card title="系统信息">
+        <a-card title="System Info">
           <a-descriptions :column="1" size="small">
-            <a-descriptions-item label="系统名称">数据脱敏系统</a-descriptions-item>
-            <a-descriptions-item label="版本号">1.0.0</a-descriptions-item>
-            <a-descriptions-item label="当前用户">{{ userStore.realName || userStore.username }}</a-descriptions-item>
+            <a-descriptions-item label="System Name">Cloudberry Data Management Console</a-descriptions-item>
+            <a-descriptions-item label="Version">1.0.0</a-descriptions-item>
+            <a-descriptions-item label="Current User">{{ userStore.realName || userStore.username }}</a-descriptions-item>
           </a-descriptions>
         </a-card>
       </a-col>
@@ -75,7 +75,7 @@
 
     <a-row :gutter="16" style="margin-top: 24px">
       <a-col :span="24">
-        <a-card title="最近执行">
+        <a-card title="Recent Executions">
           <a-table :columns="executionColumns" :data-source="recentExecutions" :pagination="false" size="small">
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
@@ -113,16 +113,16 @@ const stats = reactive({
 })
 
 const recentExecutions = ref([
-  { id: 1, taskName: '客户信息脱敏', status: 'SUCCESS', startTime: '2024-01-15 09:00:00', duration: '5分钟' },
-  { id: 2, taskName: '订单数据同步', status: 'SUCCESS', startTime: '2024-01-15 08:30:00', duration: '12分钟' },
-  { id: 3, taskName: '交易记录脱敏', status: 'FAILED', startTime: '2024-01-14 18:00:00', duration: '-' }
+  { id: 1, taskName: 'Customer Info Masking', status: 'SUCCESS', startTime: '2024-01-15 09:00:00', duration: '5 min' },
+  { id: 2, taskName: 'Order Data Sync', status: 'SUCCESS', startTime: '2024-01-15 08:30:00', duration: '12 min' },
+  { id: 3, taskName: 'Transaction Masking', status: 'FAILED', startTime: '2024-01-14 18:00:00', duration: '-' }
 ])
 
 const executionColumns = [
-  { title: '任务名称', dataIndex: 'taskName', key: 'taskName' },
-  { title: '状态', dataIndex: 'status', key: 'status' },
-  { title: '开始时间', dataIndex: 'startTime', key: 'startTime' },
-  { title: '耗时', dataIndex: 'duration', key: 'duration' }
+  { title: 'Task Name', dataIndex: 'taskName', key: 'taskName' },
+  { title: 'Status', dataIndex: 'status', key: 'status' },
+  { title: 'Start Time', dataIndex: 'startTime', key: 'startTime' },
+  { title: 'Duration', dataIndex: 'duration', key: 'duration' }
 ]
 
 function getStatusColor(status: string): string {
@@ -137,16 +137,16 @@ function getStatusColor(status: string): string {
 
 function getStatusText(status: string): string {
   const texts: Record<string, string> = {
-    SUCCESS: '成功',
-    FAILED: '失败',
-    RUNNING: '执行中',
-    PENDING: '等待中'
+    SUCCESS: 'Success',
+    FAILED: 'Failed',
+    RUNNING: 'Running',
+    PENDING: 'Pending'
   }
   return texts[status] || status
 }
 
 onMounted(() => {
-  // 模拟数据加载
+  // Mock data loading
   stats.datasourceCount = 5
   stats.maskingTaskCount = 12
   stats.syncTaskCount = 8

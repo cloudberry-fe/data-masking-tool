@@ -1,10 +1,10 @@
 """
-数据库初始化脚本
+Database Initialization Script
 """
 import sys
 import os
 
-# 添加项目路径
+# Add project path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app.core.database import engine, Base, SessionLocal
@@ -13,21 +13,21 @@ from app.services.auth_service import AuthService
 
 
 def init_database():
-    """初始化数据库"""
-    print("正在创建数据库表...")
+    """Initialize database"""
+    print("Creating database tables...")
     Base.metadata.create_all(bind=engine)
-    print("数据库表创建完成！")
+    print("Database tables created successfully!")
 
-    print("\n正在初始化默认数据...")
+    print("\nInitializing default data...")
     db = SessionLocal()
     try:
         AuthService.init_default_data(db)
-        print("默认数据初始化完成！")
-        print("\n默认登录账号:")
-        print("  用户名: admin")
-        print("  密码: admin123")
+        print("Default data initialized successfully!")
+        print("\nDefault login credentials:")
+        print("  Username: admin")
+        print("  Password: admin123")
     except Exception as e:
-        print(f"初始化默认数据失败: {e}")
+        print(f"Failed to initialize default data: {e}")
     finally:
         db.close()
 

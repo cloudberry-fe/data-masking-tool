@@ -1,5 +1,5 @@
 # Build stage
-FROM node:18-alpine as builder
+FROM node:18-alpine AS builder
 
 WORKDIR /app
 
@@ -9,7 +9,7 @@ RUN npm install --registry=https://registry.npmmirror.com
 
 # Build
 COPY . .
-RUN npm run build
+RUN npm run build:docker
 
 # Runtime stage
 FROM nginx:alpine

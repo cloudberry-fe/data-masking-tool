@@ -2,8 +2,8 @@
   <div class="login-container">
     <div class="login-box">
       <div class="login-header">
-        <h1>数据脱敏系统</h1>
-        <p>恒丰银行 - 血缘分析、MPP数据脱敏、翻数工具</p>
+        <h1>Cloudberry Data Management Console</h1>
+        <p>Data Masking, Lineage Analysis, and Data Synchronization Platform</p>
       </div>
       <a-form
         :model="formState"
@@ -16,7 +16,7 @@
           <a-input
             v-model:value="formState.username"
             size="large"
-            placeholder="请输入用户名"
+            placeholder="Username"
             :prefix-icon="UserOutlined"
           />
         </a-form-item>
@@ -24,7 +24,7 @@
           <a-input-password
             v-model:value="formState.password"
             size="large"
-            placeholder="请输入密码"
+            placeholder="Password"
             :prefix-icon="LockOutlined"
             @pressEnter="handleLogin"
           />
@@ -37,12 +37,12 @@
             block
             :loading="loading"
           >
-            登录
+            Sign In
           </a-button>
         </a-form-item>
       </a-form>
       <div class="login-footer">
-        <p>默认账号: admin / admin123</p>
+        <p>Default credentials: admin / admin123</p>
       </div>
     </div>
   </div>
@@ -65,8 +65,8 @@ const formState = reactive({
 })
 
 const rules = {
-  username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
-  password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
+  username: [{ required: true, message: 'Please enter username', trigger: 'blur' }],
+  password: [{ required: true, message: 'Please enter password', trigger: 'blur' }]
 }
 
 async function handleLogin() {
@@ -77,10 +77,10 @@ async function handleLogin() {
   loading.value = true
   try {
     await userStore.login(formState.username, formState.password)
-    message.success('登录成功')
+    message.success('Login successful')
     router.push('/')
   } catch (error) {
-    console.error('登录失败:', error)
+    console.error('Login failed:', error)
   } finally {
     loading.value = false
   }
@@ -111,13 +111,13 @@ async function handleLogin() {
 }
 
 .login-header h1 {
-  font-size: 24px;
+  font-size: 20px;
   color: #333;
   margin-bottom: 8px;
 }
 
 .login-header p {
-  font-size: 14px;
+  font-size: 13px;
   color: #999;
 }
 

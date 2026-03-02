@@ -1,7 +1,6 @@
 """
-数据脱敏系统主入口
+Cloudberry Data Management Console - Main Application Entry
 """
-import os
 import logging
 from contextlib import asynccontextmanager
 
@@ -14,7 +13,7 @@ from app.core.database import engine, SessionLocal, Base
 from app.api import api_router
 from app.services.auth_service import AuthService
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     level=getattr(logging, settings.LOG_LEVEL),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -23,35 +22,35 @@ logger = logging.getLogger(__name__)
 
 
 def init_data():
-    """初始化数据"""
+    """Initialize database data"""
     db = SessionLocal()
     try:
-        # 创建所有表
+        # Create all tables
         Base.metadata.create_all(bind=engine)
-        # 初始化默认数据
+        # Initialize default data
         AuthService.init_default_data(db)
     except Exception as e:
-        logger.exception(f"初始化数据失败: {e}")
+        logger.exception(f"Failed to initialize data: {e}")
     finally:
         db.close()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期"""
-    # 启动时
-    logger.info(f"启动 {settings.APP_NAME}...")
+    """Application lifespan"""
+    # Startup
+    logger.info(f"Starting {settings.APP_NAME}...")
     init_data()
-    logger.info(f"{settings.APP_NAME} 启动完成")
+    logger.info(f"{settings.APP_NAME} started successfully")
     yield
-    # 关闭时
-    logger.info(f"{settings.APP_NAME} 正在关闭...")
+    # Shutdown
+    logger.info(f"{settings.APP_NAME} is shutting down...")
 
 
-# 创建FastAPI应用
+# Create FastAPI application
 app = FastAPI(
     title=settings.APP_NAME,
-    description="恒丰银行数据脱敏系统",
+    description="A comprehensive data management platform with data masking, lineage analysis, and data synchronization capabilities.",
     version="1.0.0",
     lifespan=lifespan,
     docs_url="/api/docs",
@@ -59,7 +58,7 @@ app = FastAPI(
     openapi_url="/api/openapi.json",
 )
 
-# 配置CORS
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -69,33 +68,33 @@ app.add_middleware(
 )
 
 
-# 全局异常处理
+# Global exception handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    logger.exception(f"未处理的异常: {exc}")
+    logger.exception(f"Unhandled exception: {exc}")
     return JSONResponse(
         status_code=500,
         content={
             "code": 500,
-            "message": f"服务器内部错误: {str(exc)}",
+            "message": f"Internal server error: {str(exc)}",
             "data": None,
         },
     )
 
 
-# 注册路由
+# Register routes
 app.include_router(api_router)
 
 
 @app.get("/health")
 async def health_check():
-    """健康检查"""
+    """Health check endpoint"""
     return {"status": "ok", "service": settings.APP_NAME, "version": "1.0.0"}
 
 
 @app.get("/")
 async def root():
-    """根路径"""
+    """Root endpoint"""
     return {
         "name": settings.APP_NAME,
         "version": "1.0.0",

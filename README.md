@@ -1,79 +1,63 @@
-# 恒丰银行数据脱敏系统
+# Cloudberry Data Management Console
 
-基于 HashData Lightning + Anon 插件的企业级数据脱敏平台，提供数据源管理、数据脱敏、血缘分析、翻数工具等功能。
+A comprehensive data management platform featuring data masking, lineage analysis, data synchronization, and data source management. Built with HashData Lightning and PostgreSQL Anon extension for high-performance data masking.
 
-## 功能特性
+## Features
 
-- **数据源管理**: 支持 MPP、Oracle、MySQL、达梦等多种数据源
-- **数据脱敏**: 基于 HashData Lightning + Anon 插件的高性能脱敏引擎
-- **血缘分析**: 可视化数据血缘关系图谱
-- **翻数工具**: 高效的数据同步翻数功能
-- **权限管理**: 完善的用户角色权限控制
-- **审计日志**: 完整的操作审计追踪
+- **Data Source Management**: Support for HashData Lightning (MPP), PostgreSQL, MySQL, Oracle, Dameng and more
+- **Data Masking**: High-performance masking engine based on HashData Lightning + Anon extension
+- **Data Lineage**: Visual data lineage analysis with graph visualization
+- **Data Sync**: Efficient data synchronization and migration tools
+- **User & Permission**: Complete RBAC (Role-Based Access Control) system
+- **Audit Log**: Comprehensive operation audit trail
 
-## 技术栈
+## Tech Stack
 
-### 后端
+### Backend
 - Python 3.10+
-- FastAPI (Web框架)
+- FastAPI (Web Framework)
 - SQLAlchemy 2.0 (ORM)
-- PostgreSQL (元数据存储)
-- Celery + Redis (异步任务)
-- HashData Lightning + Anon (脱敏引擎)
+- PostgreSQL (Metadata Storage)
+- Redis (Cache/Queue)
+- HashData Lightning + Anon (Masking Engine)
 
-### 前端
+### Frontend
 - Vue 3 + TypeScript
-- Ant Design Vue (UI组件库)
-- Pinia (状态管理)
-- ECharts + AntV G6 (可视化)
+- Ant Design Vue (UI Component Library)
+- Pinia (State Management)
+- AntV G6 (Graph Visualization)
+- ECharts (Charts)
 
-## 项目结构
+## Quick Start
 
-```
-data-masking-tool/
-├── backend/                 # 后端服务
-│   ├── app/
-│   │   ├── api/            # API路由
-│   │   ├── core/           # 核心配置
-│   │   ├── models/         # 数据模型
-│   │   ├── schemas/        # Pydantic模式
-│   │   ├── services/       # 业务逻辑
-│   │   ├── tasks/          # 异步任务
-│   │   └── utils/          # 工具类
-│   ├── alembic/            # 数据库迁移
-│   └── tests/              # 测试
-├── frontend/               # 前端应用
-│   ├── src/
-│   │   ├── api/            # API调用
-│   │   ├── assets/         # 静态资源
-│   │   ├── components/     # 公共组件
-│   │   ├── layouts/        # 布局组件
-│   │   ├── router/         # 路由配置
-│   │   ├── stores/         # 状态管理
-│   │   ├── utils/          # 工具函数
-│   │   └── views/          # 页面视图
-│   └── public/
-├── docs/                   # 文档
-└── docker/                 # Docker配置
-```
-
-## 快速开始
-
-### 后端启动
+### Docker (Recommended)
 
 ```bash
+git clone <repository-url>
+cd data-masking-tool
+docker-compose up -d
+```
+
+Access the application:
+- Frontend: http://localhost
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/api/docs
+
+### Manual Setup
+
+#### Backend
+```bash
 cd backend
-python -m venv venv
+python3.10 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# 编辑 .env 配置
-alembic upgrade head
-uvicorn app.main:app --reload
+# Edit .env with your configuration
+python scripts/init_db.py
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-### 前端启动
-
+#### Frontend
 ```bash
 cd frontend
 npm install
@@ -81,10 +65,69 @@ cp .env.example .env
 npm run dev
 ```
 
-## 默认账号
+## Default Credentials
 
-- 管理员: admin / admin123
+- **Username**: `admin`
+- **Password**: `admin123`
 
-## 许可证
+> ⚠️ **Security Warning**: Please change the default password immediately after first login!
+
+## Project Structure
+
+```
+data-masking-tool/
+├── docs/                    # Documentation
+│   ├── SYSTEM_REQUIREMENTS.md
+│   ├── DEPLOYMENT.md
+│   ├── USER_GUIDE.md
+│   └── PROJECT_SUMMARY.md
+├── backend/                 # Backend Service
+│   ├── app/
+│   │   ├── api/            # API Routes
+│   │   ├── core/           # Core Configuration
+│   │   ├── models/         # Data Models
+│   │   ├── schemas/        # Pydantic Schemas
+│   │   ├── services/       # Business Logic
+│   │   └── utils/          # Utilities
+│   └── main.py
+├── frontend/               # Frontend Application
+│   ├── src/
+│   │   ├── views/          # Page Components
+│   │   ├── layouts/        # Layout Components
+│   │   ├── router/         # Router Configuration
+│   │   └── stores/         # State Management
+│   └── package.json
+└── docker-compose.yml
+```
+
+## Documentation
+
+- [System Requirements](docs/SYSTEM_REQUIREMENTS.md) - Detailed system requirements and architecture
+- [Deployment Guide](docs/DEPLOYMENT.md) - Step-by-step deployment instructions
+- [User Guide](docs/USER_GUIDE.md) - Complete user manual
+- [Project Summary](docs/PROJECT_SUMMARY.md) - Project overview and features
+
+## Masking Algorithms
+
+The system includes 10 pre-built masking algorithms:
+
+| Algorithm | Description | Use Case |
+|-----------|-------------|----------|
+| MASK | Partial masking with wildcard | Phone, ID card |
+| HASH | SHA-256 one-way hash | Unique identifiers |
+| REPLACE | Fixed value replacement | Sensitive fields |
+| NULL | Set to NULL | Unneeded fields |
+| ROUND | Numeric rounding | Amount, age |
+| OFFSET | Numeric offset | Age, date |
+| SHUFFLE | Column shuffling | Randomization |
+| SUBSTITUTION | Dictionary substitution | Realistic fake data |
+| PRESERVATION | Format-preserving | Names, addresses |
+| ENCRYPT | Reversible encryption | Secure storage |
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit issues and pull requests.
+
+## License
 
 MIT License

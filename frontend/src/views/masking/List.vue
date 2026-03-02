@@ -57,7 +57,7 @@
               title="Are you sure you want to execute this task?"
               @confirm="executeTask(record)"
             >
-              <a-button type="link" size="small" type="primary">
+              <a-button type="primary" size="small">
                 Execute
               </a-button>
             </a-popconfirm>

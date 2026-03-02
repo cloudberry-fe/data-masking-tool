@@ -38,7 +38,7 @@
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-popconfirm title="Are you sure you want to execute this task?" @confirm="executeTask(record)">
-              <a-button type="link" size="small" type="primary">
+              <a-button type="primary" size="small">
                 Execute
               </a-button>
             </a-popconfirm>

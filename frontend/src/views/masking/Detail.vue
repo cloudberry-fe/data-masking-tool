@@ -122,9 +122,9 @@
       <div v-if="currentTable" class="column-config">
         <div class="action-bar">
           <a-space>
-            <a-button type="primary" size="small" @click="showQuickAddColumns">
+            <a-button type="primary" size="small" @click="loadTableColumnsFromDB" :loading="loadingColumns">
               <PlusOutlined />
-              Select from Table
+              Select from Database
             </a-button>
             <a-button size="small" @click="showColumnModal">
               <PlusOutlined />
@@ -168,6 +168,44 @@
         </a-table>
       </div>
     </a-drawer>
+
+    <!-- Select Columns Modal -->
+    <a-modal
+      title="Select Columns from Database"
+      v-model:open="selectColumnsModalVisible"
+      @ok="handleSelectColumnsOk"
+      @cancel="selectColumnsModalVisible = false"
+      width="700px"
+    >
+      <a-alert
+        v-if="dbColumns.length === 0 && !loadingColumns"
+        message="No columns found. Please check if the table exists in the database."
+        type="warning"
+        class="mb-4"
+      />
+      <a-checkbox-group v-model:value="selectedColumnNames" style="width: 100%">
+        <a-table
+          :columns="dbColumnTableColumns"
+          :data-source="dbColumns"
+          :pagination="false"
+          :loading="loadingColumns"
+          row-key="columnName"
+          size="small"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'select'">
+              <a-checkbox :value="record.columnName" />
+            </template>
+            <template v-if="column.key === 'columnName'">
+              <span class="font-bold">{{ record.columnName }}</span>
+            </template>
+            <template v-if="column.key === 'dataType'">
+              <a-tag size="small">{{ record.dataType }}</a-tag>
+            </template>
+          </template>
+        </a-table>
+      </a-checkbox-group>
+    </a-modal>
 
     <!-- Column Configuration Modal -->
     <a-modal
@@ -380,6 +418,19 @@ const columnFormState = reactive({
   algorithmParams: {} as Record<string, any>,
   description: ''
 })
+
+// Database columns selection
+const selectColumnsModalVisible = ref(false)
+const loadingColumns = ref(false)
+const dbColumns = ref<any[]>([])
+const selectedColumnNames = ref<string[]>([])
+
+const dbColumnTableColumns = [
+  { title: 'Select', key: 'select', width: 60 },
+  { title: 'Column Name', key: 'columnName', width: 200 },
+  { title: 'Data Type', key: 'dataType', width: 120 },
+  { title: 'Nullable', dataIndex: 'isNullable', key: 'isNullable', width: 80 }
+]
 
 // Execution history
 const executions = ref<any[]>([])
@@ -624,8 +675,95 @@ async function deleteColumn(id: number) {
   }
 }
 
+async function loadTableColumnsFromDB() {
+  if (!currentTable.value || !task.value?.datasourceId) {
+    message.warning('Please configure table and datasource first')
+    return
+  }
+
+  try {
+    loadingColumns.value = true
+    dbColumns.value = []
+    selectedColumnNames.value = []
+
+    // 解析表名，支持 schema.table 格式
+    let tableName = currentTable.value.sourceTable || currentTable.value.tableName
+    const data = await request.get(`/datasources/${task.value.datasourceId}/tables/${tableName}/columns`)
+
+    // 转换字段名
+    dbColumns.value = (data || []).map((col: any) => ({
+      columnName: col.columnName || col.column_name,
+      dataType: col.dataType || col.data_type,
+      isNullable: col.isNullable ?? col.is_nullable ?? true,
+      columnComment: col.columnComment || col.column_comment || ''
+    }))
+
+    // 预选已有的字段
+    const existingColumnNames = columns.value.map(c => c.columnName)
+    selectedColumnNames.value = existingColumnNames
+
+    selectColumnsModalVisible.value = true
+  } catch (error) {
+    message.error('Failed to load columns from database')
+  } finally {
+    loadingColumns.value = false
+  }
+}
+
+async function handleSelectColumnsOk() {
+  if (selectedColumnNames.value.length === 0) {
+    message.warning('Please select at least one column')
+    return
+  }
+
+  try {
+    // 获取现有字段名
+    const existingColumnNames = columns.value.map(c => c.columnName)
+
+    // 添加新选择的字段（排除已存在的）
+    const newColumns = selectedColumnNames.value.filter(name => !existingColumnNames.includes(name))
+
+    if (newColumns.length === 0) {
+      message.info('All selected columns already exist')
+      selectColumnsModalVisible.value = false
+      return
+    }
+
+    // 批量添加字段（使用默认脱敏算法）
+    for (const colName of newColumns) {
+      const colInfo = dbColumns.value.find(c => c.columnName === colName)
+      try {
+        await request.post(`/masking/tables/${currentTable.value.id}/columns`, {
+          tableId: currentTable.value.id,
+          columnName: colName,
+          dataType: colInfo?.dataType || 'text',
+          maskingAlgorithm: 'MASK',  // 默认使用掩码算法
+          algorithmParams: { prefix_length: 2, mask_char: '*', suffix_length: 2 },
+          description: colInfo?.columnComment || ''
+        })
+      } catch (error) {
+        console.error(`Failed to add column ${colName}:`, error)
+      }
+    }
+
+    message.success(`Added ${newColumns.length} columns successfully`)
+    selectColumnsModalVisible.value = false
+    loadTask()
+
+    // Refresh columns in drawer
+    if (currentTable.value) {
+      const updatedTable = tables.value.find(t => t.id === currentTable.value.id)
+      if (updatedTable) {
+        columns.value = updatedTable.columns || []
+      }
+    }
+  } catch (error) {
+    message.error('Failed to add columns')
+  }
+}
+
 function showQuickAddColumns() {
-  message.info('Select columns from data source table feature coming soon')
+  loadTableColumnsFromDB()
 }
 
 async function executeTask() {

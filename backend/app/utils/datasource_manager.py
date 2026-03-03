@@ -122,7 +122,9 @@ class PostgreSQLConnector(BaseDatasourceConnector):
                     c.column_name,
                     c.data_type,
                     c.is_nullable = 'YES' AS is_nullable,
-                    col_description(format('%I.%I', c.table_schema, c.table_name)::regclass, c.ordinal_position) AS column_comment
+                    c.character_maximum_length,
+                    c.numeric_precision,
+                    c.numeric_scale
                 FROM information_schema.columns c
                 WHERE c.table_schema = %s AND c.table_name = %s
                 ORDER BY c.ordinal_position
@@ -130,10 +132,19 @@ class PostgreSQLConnector(BaseDatasourceConnector):
 
             columns = []
             for row in cursor.fetchall():
+                # 构建完整的数据类型
+                data_type = row["data_type"]
+                if row.get("character_maximum_length"):
+                    data_type = f"{data_type}({row['character_maximum_length']})"
+                elif row.get("numeric_precision"):
+                    if row.get("numeric_scale"):
+                        data_type = f"{data_type}({row['numeric_precision']},{row['numeric_scale']})"
+                    else:
+                        data_type = f"{data_type}({row['numeric_precision']})"
+
                 columns.append({
                     "column_name": row["column_name"],
-                    "data_type": row["data_type"],
-                    "column_comment": row.get("column_comment") or "",
+                    "data_type": data_type,
                     "is_nullable": row.get("is_nullable", True)
                 })
 

@@ -202,7 +202,16 @@ def get_columns(
 ):
     """获取字段列表"""
     try:
-        columns = DataSourceService.get_columns(db, datasource_id, table_name, schema)
+        # 支持 schema.table 格式，自动解析
+        actual_schema = schema
+        actual_table = table_name
+
+        if '.' in table_name and not schema:
+            parts = table_name.split('.', 1)
+            actual_schema = parts[0]
+            actual_table = parts[1]
+
+        columns = DataSourceService.get_columns(db, datasource_id, actual_table, actual_schema)
         return Response(data=columns)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))

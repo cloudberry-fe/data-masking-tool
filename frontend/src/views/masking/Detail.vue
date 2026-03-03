@@ -7,6 +7,14 @@
     >
       <template #extra>
         <a-space>
+          <a-button @click="previewMasking" :loading="previewing">
+            <EyeOutlined />
+            Preview
+          </a-button>
+          <a-button @click="generateSQL">
+            <CodeOutlined />
+            Generate SQL
+          </a-button>
           <a-button type="primary" @click="executeTask" :loading="executing">
             <PlayCircleOutlined />
             Execute Task
@@ -41,7 +49,7 @@
               <template v-if="column.key === 'actions'">
                 <a-space>
                   <a-button type="link" size="small" @click="manageColumns(record)">
-                    Columns
+                    Columns ({{ record.columns?.length || 0 }})
                   </a-button>
                   <a-button type="link" size="small" @click="showTableModal(record)">
                     Edit
@@ -108,7 +116,7 @@
     <!-- Column Configuration Drawer -->
     <a-drawer
       title="Column Configuration"
-      :width="720"
+      :width="900"
       v-model:open="columnDrawerVisible"
     >
       <div v-if="currentTable" class="column-config">
@@ -134,7 +142,15 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'algorithm'">
-              <a-tag>{{ record.maskingAlgorithm }}</a-tag>
+              <a-tag color="blue">{{ getAlgorithmName(record.maskingAlgorithm) }}</a-tag>
+            </template>
+            <template v-if="column.key === 'params'">
+              <span v-if="record.algorithmParams && Object.keys(record.algorithmParams).length > 0">
+                <a-tag v-for="(value, key) in record.algorithmParams" :key="key" size="small">
+                  {{ key }}: {{ value }}
+                </a-tag>
+              </span>
+              <span v-else class="text-gray-400">-</span>
             </template>
             <template v-if="column.key === 'actions'">
               <a-space>
@@ -159,7 +175,7 @@
       v-model:open="columnModalVisible"
       @ok="handleColumnModalOk"
       @cancel="columnModalVisible = false"
-      width="560px"
+      width="700px"
     >
       <a-form ref="columnFormRef" :model="columnFormState" :label-col="{ span: 6 }">
         <a-form-item label="Column Name" name="columnName" :rules="[{ required: true }]">
@@ -168,28 +184,157 @@
         <a-form-item label="Data Type" name="dataType">
           <a-input v-model:value="columnFormState.dataType" placeholder="varchar, int, etc." />
         </a-form-item>
-        <a-form-item label="Masking Algorithm" name="maskingAlgorithm" :rules="[{ required: true }]">
-          <a-select v-model:value="columnFormState.maskingAlgorithm" placeholder="Please select">
-            <a-select-option v-for="algo in algorithms" :key="algo.code" :value="algo.code">
-              {{ algo.name }} - {{ algo.description }}
+
+        <!-- Algorithm Category Selection -->
+        <a-form-item label="Category" name="algorithmCategory">
+          <a-select
+            v-model:value="selectedCategory"
+            placeholder="Select category"
+            @change="onCategoryChange"
+          >
+            <a-select-option value="">All Categories</a-select-option>
+            <a-select-option v-for="cat in algorithmCategories" :key="cat.code" :value="cat.code">
+              {{ cat.name }} - {{ cat.description }}
             </a-select-option>
           </a-select>
         </a-form-item>
+
+        <!-- Algorithm Selection -->
+        <a-form-item label="Algorithm" name="maskingAlgorithm" :rules="[{ required: true }]">
+          <a-select
+            v-model:value="columnFormState.maskingAlgorithm"
+            placeholder="Please select"
+            show-search
+            :filter-option="filterAlgorithm"
+            @change="onAlgorithmChange"
+          >
+            <a-select-option
+              v-for="algo in filteredAlgorithms"
+              :key="algo.code"
+              :value="algo.code"
+            >
+              <div>
+                <span class="font-bold">{{ algo.name }}</span>
+                <span class="text-gray-400 ml-2">{{ algo.description }}</span>
+              </div>
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+
+        <!-- Algorithm Description -->
+        <a-form-item v-if="selectedAlgorithm" label="Description">
+          <div class="text-gray-500">
+            {{ selectedAlgorithm.description }}
+            <a-tag size="small" class="ml-2">{{ selectedAlgorithm.returnType }}</a-tag>
+          </div>
+        </a-form-item>
+
+        <!-- Dynamic Algorithm Parameters -->
+        <template v-if="selectedAlgorithm && selectedAlgorithm.params && selectedAlgorithm.params.length > 0">
+          <a-divider>Algorithm Parameters</a-divider>
+          <a-form-item
+            v-for="param in selectedAlgorithm.params"
+            :key="param.name"
+            :label="param.name"
+            :required="param.required"
+          >
+            <div class="flex items-center gap-2">
+              <!-- Integer input -->
+              <a-input-number
+                v-if="param.type === 'int' || param.type === 'bigint'"
+                v-model:value="columnFormState.algorithmParams[param.name]"
+                :placeholder="param.description"
+                style="width: 200px"
+              />
+              <!-- Float input -->
+              <a-input-number
+                v-else-if="param.type === 'float'"
+                v-model:value="columnFormState.algorithmParams[param.name]"
+                :placeholder="param.description"
+                :step="0.1"
+                style="width: 200px"
+              />
+              <!-- Boolean switch -->
+              <a-switch
+                v-else-if="param.type === 'bool'"
+                v-model:checked="columnFormState.algorithmParams[param.name]"
+              />
+              <!-- Array input -->
+              <a-input
+                v-else-if="param.type === 'array'"
+                v-model:value="columnFormState.algorithmParams[param.name]"
+                :placeholder="param.description + ' (comma separated)'"
+                style="width: 300px"
+              />
+              <!-- Text input (default) -->
+              <a-input
+                v-else
+                v-model:value="columnFormState.algorithmParams[param.name]"
+                :placeholder="param.description"
+                style="width: 300px"
+              />
+              <span class="text-gray-400 text-xs">{{ param.description }}</span>
+              <span v-if="param.default !== undefined && param.default !== null" class="text-gray-400 text-xs">
+                (default: {{ param.default }})
+              </span>
+            </div>
+          </a-form-item>
+        </template>
+
         <a-form-item label="Description" name="description">
           <a-textarea v-model:value="columnFormState.description" :rows="2" />
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- SQL Preview Modal -->
+    <a-modal
+      title="Generated SQL"
+      v-model:open="sqlModalVisible"
+      :footer="null"
+      width="800px"
+    >
+      <pre class="sql-preview">{{ generatedSQL }}</pre>
+      <div class="mt-4">
+        <a-button type="primary" @click="copySQL">
+          <CopyOutlined />
+          Copy to Clipboard
+        </a-button>
+      </div>
+    </a-modal>
+
+    <!-- Preview Modal -->
+    <a-modal
+      title="Masking Preview"
+      v-model:open="previewModalVisible"
+      :footer="null"
+      width="800px"
+    >
+      <a-table
+        v-if="previewData.columns"
+        :columns="previewData.columns.map((c: string) => ({ title: c, dataIndex: c, key: c }))"
+        :data-source="previewData.rows?.map((row: any[], idx: number) => {
+          const obj: any = { key: idx }
+          previewData.columns.forEach((c: string, i: number) => obj[c] = row[i])
+          return obj
+        })"
+        size="small"
+        :pagination="false"
+      />
+    </a-modal>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted, computed } from 'vue'
+import { ref, reactive, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
 import {
   PlusOutlined,
-  PlayCircleOutlined
+  PlayCircleOutlined,
+  EyeOutlined,
+  CodeOutlined,
+  CopyOutlined
 } from '@ant-design/icons-vue'
 import request from '@/utils/request'
 
@@ -200,6 +345,7 @@ const taskId = computed(() => parseInt(route.params.id as string))
 const task = ref<any>(null)
 const activeTab = ref('tables')
 const executing = ref(false)
+const previewing = ref(false)
 
 // Table related
 const tables = ref<any[]>([])
@@ -223,16 +369,26 @@ const currentTable = ref<any>(null)
 const columns = ref<any[]>([])
 const editingColumn = ref<any>(null)
 const algorithms = ref<any[]>([])
+const algorithmCategories = ref<any[]>([])
+const selectedCategory = ref('')
+const selectedAlgorithm = ref<any>(null)
 const columnFormState = reactive({
   id: undefined as number | undefined,
   columnName: '',
   dataType: '',
   maskingAlgorithm: '',
+  algorithmParams: {} as Record<string, any>,
   description: ''
 })
 
 // Execution history
 const executions = ref<any[]>([])
+
+// SQL Preview
+const sqlModalVisible = ref(false)
+const generatedSQL = ref('')
+const previewModalVisible = ref(false)
+const previewData = ref<any>({ columns: [], rows: [] })
 
 const tableColumns = [
   { title: 'Table Name', dataIndex: 'tableName', key: 'tableName' },
@@ -246,7 +402,8 @@ const tableColumns = [
 const columnColumns = [
   { title: 'Column Name', dataIndex: 'columnName', key: 'columnName' },
   { title: 'Type', dataIndex: 'dataType', key: 'dataType', width: 120 },
-  { title: 'Masking Algorithm', key: 'algorithm', width: 120 },
+  { title: 'Masking Algorithm', key: 'algorithm', width: 180 },
+  { title: 'Parameters', key: 'params', width: 200 },
   { title: 'Description', dataIndex: 'description', key: 'description' },
   { title: 'Actions', key: 'actions', width: 140 }
 ]
@@ -261,6 +418,14 @@ const executionColumns = [
   { title: 'Failed', dataIndex: 'failedRecords', key: 'failedRecords' }
 ]
 
+// Filtered algorithms based on category
+const filteredAlgorithms = computed(() => {
+  if (!selectedCategory.value) {
+    return algorithms.value
+  }
+  return algorithms.value.filter(a => a.category === selectedCategory.value)
+})
+
 async function loadTask() {
   try {
     const data = await request.get(`/masking/tasks/${taskId.value}`)
@@ -273,9 +438,11 @@ async function loadTask() {
 
 async function loadAlgorithms() {
   try {
-    algorithms.value = await request.get('/masking/algorithms')
+    const data = await request.get('/masking/algorithms')
+    algorithmCategories.value = data.categories || []
+    algorithms.value = data.algorithms || []
   } catch (error) {
-    //
+    console.error('Failed to load algorithms', error)
   }
 }
 
@@ -285,6 +452,39 @@ async function loadExecutions() {
     executions.value = data.items || []
   } catch (error) {
     //
+  }
+}
+
+function getAlgorithmName(code: string): string {
+  const algo = algorithms.value.find(a => a.code === code)
+  return algo?.name || code
+}
+
+function filterAlgorithm(input: string, option: any): boolean {
+  const algo = algorithms.value.find(a => a.code === option.value)
+  if (!algo) return false
+  return algo.name.toLowerCase().includes(input.toLowerCase()) ||
+         algo.description.toLowerCase().includes(input.toLowerCase())
+}
+
+function onCategoryChange() {
+  // Reset algorithm selection when category changes
+  // columnFormState.maskingAlgorithm = ''
+}
+
+function onAlgorithmChange(code: string) {
+  selectedAlgorithm.value = algorithms.value.find(a => a.code === code) || null
+  // Initialize params with defaults
+  if (selectedAlgorithm.value?.params) {
+    const params: Record<string, any> = {}
+    selectedAlgorithm.value.params.forEach((p: any) => {
+      if (p.default !== undefined) {
+        params[p.name] = p.default
+      }
+    })
+    columnFormState.algorithmParams = params
+  } else {
+    columnFormState.algorithmParams = {}
   }
 }
 
@@ -356,8 +556,10 @@ function showColumnModal(record?: any) {
       columnName: record.columnName,
       dataType: record.dataType,
       maskingAlgorithm: record.maskingAlgorithm,
+      algorithmParams: record.algorithmParams || {},
       description: record.description
     })
+    selectedAlgorithm.value = algorithms.value.find(a => a.code === record.maskingAlgorithm) || null
   } else {
     editingColumn.value = null
     Object.assign(columnFormState, {
@@ -365,26 +567,48 @@ function showColumnModal(record?: any) {
       columnName: '',
       dataType: '',
       maskingAlgorithm: '',
+      algorithmParams: {},
       description: ''
     })
+    selectedAlgorithm.value = null
   }
   columnModalVisible.value = true
 }
 
 async function handleColumnModalOk() {
   try {
+    // Clean up empty params
+    const cleanParams: Record<string, any> = {}
+    Object.entries(columnFormState.algorithmParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        cleanParams[key] = value
+      }
+    })
+
+    const payload = {
+      ...columnFormState,
+      algorithmParams: Object.keys(cleanParams).length > 0 ? cleanParams : null
+    }
+
     if (editingColumn.value) {
-      await request.put(`/masking/columns/${columnFormState.id}`, columnFormState)
+      await request.put(`/masking/columns/${columnFormState.id}`, payload)
       message.success('Updated successfully')
     } else {
       await request.post(`/masking/tables/${currentTable.value.id}/columns`, {
         tableId: currentTable.value.id,
-        ...columnFormState
+        ...payload
       })
       message.success('Added successfully')
     }
     columnModalVisible.value = false
     loadTask()
+    // Refresh columns in drawer
+    if (currentTable.value) {
+      const updatedTable = tables.value.find(t => t.id === currentTable.value.id)
+      if (updatedTable) {
+        columns.value = updatedTable.columns || []
+      }
+    }
   } catch (error) {
     //
   }
@@ -409,10 +633,58 @@ async function executeTask() {
     executing.value = true
     await request.post(`/masking/tasks/${taskId.value}/execute`)
     message.success('Task submitted for execution')
+    activeTab.value = 'executions'
     loadExecutions()
   } finally {
     executing.value = false
   }
+}
+
+async function generateSQL() {
+  try {
+    // Generate SQL for all tables
+    const sqlParts: string[] = []
+    for (const table of tables.value) {
+      if (table.enabled && table.columns?.length > 0) {
+        sqlParts.push(`-- Table: ${table.tableName}`)
+        sqlParts.push(`-- Source: ${table.sourceTable || table.tableName}`)
+        sqlParts.push(`-- Target: ${table.targetTable || table.tableName + '_masked'}`)
+        sqlParts.push('')
+
+        for (const col of table.columns) {
+          const algo = algorithms.value.find(a => a.code === col.maskingAlgorithm)
+          sqlParts.push(`--   ${col.columnName}: ${algo?.name || col.maskingAlgorithm}`)
+          if (col.algorithmParams) {
+            Object.entries(col.algorithmParams).forEach(([k, v]) => {
+              sqlParts.push(`--     ${k} = ${v}`)
+            })
+          }
+        }
+        sqlParts.push('')
+      }
+    }
+
+    generatedSQL.value = sqlParts.join('\n')
+    sqlModalVisible.value = true
+  } catch (error) {
+    message.error('Failed to generate SQL')
+  }
+}
+
+async function previewMasking() {
+  try {
+    previewing.value = true
+    message.info('Preview feature will execute masking on a sample of data')
+    // This would call the backend preview endpoint
+    previewModalVisible.value = true
+  } finally {
+    previewing.value = false
+  }
+}
+
+function copySQL() {
+  navigator.clipboard.writeText(generatedSQL.value)
+  message.success('SQL copied to clipboard')
 }
 
 function getExecutionStatusColor(status: string): string {
@@ -449,5 +721,36 @@ onMounted(() => {
 
 .action-bar {
   margin-bottom: 16px;
+}
+
+.sql-preview {
+  background: #f5f5f5;
+  padding: 16px;
+  border-radius: 4px;
+  font-family: monospace;
+  font-size: 13px;
+  white-space: pre-wrap;
+  max-height: 500px;
+  overflow: auto;
+}
+
+.text-gray-400 {
+  color: #9ca3af;
+}
+
+.text-gray-500 {
+  color: #6b7280;
+}
+
+.font-bold {
+  font-weight: 600;
+}
+
+.ml-2 {
+  margin-left: 8px;
+}
+
+.mt-4 {
+  margin-top: 16px;
 }
 </style>

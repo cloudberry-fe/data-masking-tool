@@ -347,10 +347,44 @@ def get_execution(
 # ==================== 脱敏算法 ====================
 
 @router.get("/algorithms")
-def get_algorithms():
+def get_algorithms(
+    category: Optional[str] = None,
+):
     """获取脱敏算法列表"""
-    algorithms = MaskingService.get_algorithms()
-    return Response(data=algorithms)
+    from app.utils.hashdata_anon import get_all_algorithms, get_algorithm_categories
+
+    algorithms = get_all_algorithms()
+    categories = get_algorithm_categories()
+
+    if category:
+        algorithms = [a for a in algorithms if a["category"] == category.upper()]
+
+    return Response(data={
+        "categories": categories,
+        "algorithms": algorithms
+    })
+
+
+@router.get("/algorithms/categories")
+def get_algorithm_categories():
+    """获取脱敏算法分类"""
+    from app.utils.hashdata_anon import get_algorithm_categories
+    return Response(data=get_algorithm_categories())
+
+
+@router.get("/algorithms/{algorithm_code}")
+def get_algorithm_detail(
+    algorithm_code: str,
+):
+    """获取算法详情"""
+    from app.utils.hashdata_anon import get_all_algorithms
+
+    algorithms = get_all_algorithms()
+    for algo in algorithms:
+        if algo["code"].lower() == algorithm_code.lower():
+            return Response(data=algo)
+
+    raise HTTPException(status_code=404, detail="算法不存在")
 
 
 # ==================== 脱敏模板 ====================

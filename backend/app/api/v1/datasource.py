@@ -24,15 +24,15 @@ from app.api.deps import CurrentUser, DBSession, AuditLogger
 router = APIRouter()
 
 
-@router.get("", response_model=Response[PageResponse[DataSourceResponse]])
+@router.get("", response_model=Response[PageResponse[DataSourceResponse]], response_model_by_alias=True)
 def get_datasources(
+    db: DBSession,
+    current_user: CurrentUser,
     page: int = 1,
     page_size: int = 20,
     keyword: Optional[str] = None,
     datasource_type: Optional[str] = None,
     status: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
 ):
     """获取数据源列表"""
     datasources, total = DataSourceService.get_datasources(
@@ -46,7 +46,7 @@ def get_datasources(
     ))
 
 
-@router.post("", response_model=Response[DataSourceResponse])
+@router.post("", response_model=Response[DataSourceResponse], response_model_by_alias=True)
 def create_datasource(
     request: DataSourceCreate,
     db: DBSession,
@@ -71,7 +71,7 @@ def create_datasource(
     return Response(data=datasource, message="创建成功")
 
 
-@router.get("/{datasource_id}", response_model=Response[DataSourceResponse])
+@router.get("/{datasource_id}", response_model=Response[DataSourceResponse], response_model_by_alias=True)
 def get_datasource(
     datasource_id: int,
     db: DBSession,
@@ -84,7 +84,7 @@ def get_datasource(
     return Response(data=datasource)
 
 
-@router.put("/{datasource_id}", response_model=Response[DataSourceResponse])
+@router.put("/{datasource_id}", response_model=Response[DataSourceResponse], response_model_by_alias=True)
 def update_datasource(
     datasource_id: int,
     request: DataSourceUpdate,
@@ -121,7 +121,7 @@ def delete_datasource(
 ):
     """删除数据源"""
     datasource = DataSourceService.get_datasource(db, datasource_id)
-    if not datasource:
+    if datasource:
         name = datasource.datasource_name
         success = DataSourceService.delete_datasource(db, datasource_id)
         if success:
@@ -129,12 +129,12 @@ def delete_datasource(
     return Response(message="删除成功")
 
 
-@router.post("/test-connection", response_model=Response[DataSourceTestResponse])
+@router.post("/test-connection", response_model=Response[DataSourceTestResponse], response_model_by_alias=True)
 def test_connection(
     request: DataSourceTest,
     current_user: CurrentUser,
 ):
-    """测试数据源连接"""
+    """测试数据源连接（新建时使用）"""
     success, message, version = DataSourceService.test_connection(
         request.datasource_type,
         request.host,
@@ -150,12 +150,39 @@ def test_connection(
     ))
 
 
-@router.get("/{datasource_id}/tables", response_model=Response[List[TableInfo]])
-def get_tables(
+@router.post("/{datasource_id}/test-connection", response_model=Response[DataSourceTestResponse], response_model_by_alias=True)
+def test_saved_connection(
     datasource_id: int,
-    schema: Optional[str] = None,
     db: DBSession,
     current_user: CurrentUser,
+):
+    """测试已保存数据源的连接"""
+    datasource = DataSourceService.get_datasource(db, datasource_id)
+    if not datasource:
+        raise HTTPException(status_code=404, detail="数据源不存在")
+
+    config = DataSourceService.get_datasource_config(datasource)
+    success, message, version = DataSourceService.test_connection(
+        datasource.datasource_type,
+        config["host"],
+        config["port"],
+        config.get("database_name"),
+        config["username"],
+        config.get("password"),
+    )
+    return Response(data=DataSourceTestResponse(
+        success=success,
+        message=message,
+        version=version
+    ))
+
+
+@router.get("/{datasource_id}/tables", response_model=Response[List[TableInfo]], response_model_by_alias=True)
+def get_tables(
+    datasource_id: int,
+    db: DBSession,
+    current_user: CurrentUser,
+    schema: Optional[str] = None,
 ):
     """获取表列表"""
     try:
@@ -165,13 +192,13 @@ def get_tables(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{datasource_id}/tables/{table_name}/columns", response_model=Response[List[ColumnInfo]])
+@router.get("/{datasource_id}/tables/{table_name}/columns", response_model=Response[List[ColumnInfo]], response_model_by_alias=True)
 def get_columns(
     datasource_id: int,
     table_name: str,
-    schema: Optional[str] = None,
     db: DBSession,
     current_user: CurrentUser,
+    schema: Optional[str] = None,
 ):
     """获取字段列表"""
     try:
@@ -181,7 +208,7 @@ def get_columns(
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.get("/{datasource_id}/references")
+@router.get("/{datasource_id}/references", response_model_by_alias=True)
 def get_references(
     datasource_id: int,
     db: DBSession,
@@ -194,7 +221,7 @@ def get_references(
 
 # ==================== 账号映射 ====================
 
-@router.get("/{datasource_id}/account-mappings", response_model=Response[List[AccountMappingResponse]])
+@router.get("/{datasource_id}/account-mappings", response_model=Response[List[AccountMappingResponse]], response_model_by_alias=True)
 def get_account_mappings(
     datasource_id: int,
     db: DBSession,
@@ -205,7 +232,7 @@ def get_account_mappings(
     return Response(data=mappings)
 
 
-@router.post("/{datasource_id}/account-mappings", response_model=Response[AccountMappingResponse])
+@router.post("/{datasource_id}/account-mappings", response_model=Response[AccountMappingResponse], response_model_by_alias=True)
 def create_account_mapping(
     datasource_id: int,
     request: AccountMappingCreate,

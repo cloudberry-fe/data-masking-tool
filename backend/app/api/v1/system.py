@@ -29,12 +29,12 @@ router = APIRouter()
 
 @router.get("/users", response_model=Response[PageResponse[UserResponse]])
 def get_users(
+    db: DBSession,
+    current_user: CurrentUser,
     page: int = 1,
     page_size: int = 20,
     keyword: Optional[str] = None,
     status: Optional[int] = None,
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
 ):
     """获取用户列表"""
     users, total = UserService.get_users(db, page, page_size, keyword, status)

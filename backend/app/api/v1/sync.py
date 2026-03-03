@@ -20,12 +20,12 @@ router = APIRouter()
 
 @router.get("/tasks", response_model=Response[PageResponse[DataSyncTaskResponse]])
 def get_tasks(
+    db: DBSession,
+    current_user: CurrentUser,
     page: int = 1,
     page_size: int = 20,
     keyword: Optional[str] = None,
     status: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
 ):
     """获取翻数任务列表"""
     from sqlalchemy import select, func

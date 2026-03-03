@@ -10,6 +10,12 @@ export interface UserInfo {
   permissions: string[]
 }
 
+export interface LoginResponse extends UserInfo {
+  access_token: string
+  token_type: string
+  expires_in: number
+}
+
 export const useUserStore = defineStore('user', () => {
   const token = ref<string>(localStorage.getItem('token') || '')
   const userInfo = ref<UserInfo | null>(null)
@@ -21,7 +27,7 @@ export const useUserStore = defineStore('user', () => {
   const permissions = computed(() => userInfo.value?.permissions || [])
 
   async function login(username: string, password: string): Promise<UserInfo> {
-    const data = await request.post<UserInfo>('/auth/login', { username, password })
+    const data = await request.post<LoginResponse>('/auth/login', { username, password })
     token.value = data.access_token
     localStorage.setItem('token', data.access_token)
     userInfo.value = {

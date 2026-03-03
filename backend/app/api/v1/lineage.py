@@ -18,10 +18,10 @@ router = APIRouter()
 
 @router.get("/graph", response_model=Response[LineageGraph])
 def get_lineage_graph(
+    db: DBSession,
+    current_user: CurrentUser,
     datasource_id: Optional[int] = None,
     node_type: Optional[str] = "TABLE",
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
 ):
     """获取血缘图谱"""
     # 演示数据
@@ -42,9 +42,9 @@ def get_lineage_graph(
 @router.post("/analysis", response_model=Response[LineageGraph])
 def analyze_lineage(
     request: LineageAnalysisRequest,
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
-    audit: AuditLogger = None,
+    db: DBSession,
+    current_user: CurrentUser,
+    audit: AuditLogger,
 ):
     """执行血缘分析"""
     audit("EXECUTE", "lineage", f"执行血缘分析: 数据源ID={request.datasource_id}")

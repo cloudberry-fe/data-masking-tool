@@ -14,6 +14,7 @@ from app.schemas.auth import (
 )
 from app.schemas.system import UserResponse
 from app.services.auth_service import AuthService
+from app.services.user_service import UserService
 from app.api.deps import CurrentUser, DBSession, AuditLogger
 
 router = APIRouter(prefix="/auth")
@@ -58,7 +59,7 @@ def get_current_user_info(
     db: DBSession,
 ):
     """获取当前用户信息"""
-    user = AuthService.get_user_with_roles(db, current_user.id)
+    user = UserService.get_user_with_roles(db, current_user.id)
     return Response(data=user)
 
 

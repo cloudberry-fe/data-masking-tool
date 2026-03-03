@@ -32,13 +32,13 @@ router = APIRouter()
 
 @router.get("/tasks", response_model=Response[PageResponse[MaskingTaskResponse]])
 def get_tasks(
+    db: DBSession,
+    current_user: CurrentUser,
     page: int = 1,
     page_size: int = 20,
     keyword: Optional[str] = None,
     datasource_id: Optional[int] = None,
     status: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
 ):
     """获取脱敏任务列表"""
     tasks, total = MaskingService.get_tasks(
@@ -136,10 +136,10 @@ def delete_task(
 @router.post("/tasks/{task_id}/execute", response_model=Response[Dict[str, Any]])
 def execute_task(
     task_id: int,
+    db: DBSession,
+    current_user: CurrentUser,
+    audit: AuditLogger,
     request: Optional[MaskingTaskExecuteRequest] = None,
-    db: DBSession = Depends(get_db),
-    current_user: CurrentUser = None,
-    audit: AuditLogger = None,
 ):
     """执行脱敏任务"""
     task = MaskingService.get_task(db, task_id)
@@ -316,10 +316,10 @@ def delete_column(
 @router.get("/tasks/{task_id}/executions", response_model=Response[PageResponse[MaskingTaskExecutionResponse]])
 def get_executions(
     task_id: int,
+    db: DBSession,
+    current_user: CurrentUser,
     page: int = 1,
     page_size: int = 20,
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
 ):
     """获取执行历史"""
     executions, total = MaskingService.get_executions(db, task_id, page, page_size)
@@ -357,11 +357,11 @@ def get_algorithms():
 
 @router.get("/templates", response_model=Response[PageResponse[MaskingTemplateResponse]])
 def get_templates(
+    db: DBSession,
+    current_user: CurrentUser,
     page: int = 1,
     page_size: int = 20,
     keyword: Optional[str] = None,
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
 ):
     """获取脱敏模板列表"""
     templates, total = MaskingService.get_templates(db, page, page_size, keyword)

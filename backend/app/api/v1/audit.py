@@ -17,9 +17,9 @@ router = APIRouter()
 
 @router.get("/logs", response_model=Response[PageResponse[AuditLogResponse]])
 def get_audit_logs(
+    db: DBSession,
+    current_user: CurrentUser,
     query: AuditLogQuery = Depends(),
-    db: Session = Depends(get_db),
-    current_user: CurrentUser = None,
 ):
     """获取审计日志列表"""
     logs, total = AuditService.get_logs(

@@ -252,14 +252,7 @@ function handleModalCancel() {
 
 async function testConnection(record: any) {
   try {
-    const result = await request.post('/datasources/test-connection', {
-      datasourceType: record.datasourceType,
-      host: record.host,
-      port: record.port,
-      databaseName: record.databaseName,
-      username: record.username,
-      password: '' // User needs to enter password
-    })
+    const result = await request.post(`/datasources/${record.id}/test-connection`)
 
     if (result.success) {
       message.success(`Connection successful! ${result.version || ''}`)

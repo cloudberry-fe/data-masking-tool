@@ -127,7 +127,7 @@ async def audit_logger(
     return log
 
 
-# 类型别名
+# 类型别名 - 用于简化依赖注入
 CurrentUser = Annotated[User, Depends(get_current_active_user)]
 DBSession = Annotated[Session, Depends(get_db)]
 AuditLogger = Annotated[callable, Depends(audit_logger)]

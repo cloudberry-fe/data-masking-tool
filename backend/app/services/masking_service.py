@@ -525,7 +525,7 @@ class MaskingService:
                     columns=masking_columns,
                 )
 
-                # 生成并执行SQL（这里简化为生成SQL记录，实际执行需要完善）
+                # 生成并执行SQL
                 sql = anon_manager.generate_masking_sql(
                     masking_table_config,
                     source_schema=task.source_schema or "public",
@@ -534,9 +534,19 @@ class MaskingService:
 
                 logger.info(f"生成脱敏SQL:\n{sql}")
 
-                # 这里模拟执行成功
-                # 实际环境中应该调用 anon_manager.execute_masking()
-                total_success += 1000  # 模拟处理记录数
+                # 实际执行脱敏
+                result = anon_manager.execute_masking(
+                    masking_table_config,
+                    datasource_config,
+                    source_schema=task.source_schema or "public",
+                    target_schema=task.target_schema or "public",
+                )
+
+                if result.get("success"):
+                    total_success += result.get("rowcount", 0)
+                else:
+                    total_failed += 1
+                    logger.error(f"表 {table_config.table_name} 脱敏失败: {result.get('error')}")
 
             # 更新执行状态为成功
             MaskingService.update_execution_status(

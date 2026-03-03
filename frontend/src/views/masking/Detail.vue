@@ -93,19 +93,61 @@
       v-model:open="tableModalVisible"
       @ok="handleTableModalOk"
       @cancel="tableModalVisible = false"
+      width="650px"
     >
-      <a-form ref="tableFormRef" :model="tableFormState" :label-col="{ span: 6 }">
+      <a-form ref="tableFormRef" :model="tableFormState" :label-col="{ span: 7 }">
         <a-form-item label="Table Name" name="tableName" :rules="[{ required: true }]">
-          <a-input v-model:value="tableFormState.tableName" placeholder="Please enter" />
+          <a-input v-model:value="tableFormState.tableName" placeholder="Display name for this configuration" />
         </a-form-item>
-        <a-form-item label="Source Table" name="sourceTable">
-          <a-input v-model:value="tableFormState.sourceTable" placeholder="Same as table name" />
+
+        <a-divider>Source Table</a-divider>
+        <a-form-item label="Source Schema" name="sourceSchema">
+          <a-select
+            v-model:value="tableFormState.sourceSchema"
+            placeholder="Select schema"
+            show-search
+            allow-clear
+            :loading="loadingSchemas"
+          >
+            <a-select-option v-for="schema in schemaList" :key="schema" :value="schema">
+              {{ schema }}
+            </a-select-option>
+          </a-select>
         </a-form-item>
-        <a-form-item label="Target Table" name="targetTable">
-          <a-input v-model:value="tableFormState.targetTable" placeholder="table_name_masked" />
+        <a-form-item label="Source Table" name="sourceTable" :rules="[{ required: true }]">
+          <a-select
+            v-model:value="tableFormState.sourceTable"
+            placeholder="Select source table"
+            show-search
+            :loading="loadingTables"
+            @focus="loadTablesForSchema('source')"
+          >
+            <a-select-option v-for="table in sourceTableList" :key="table" :value="table">
+              {{ table }}
+            </a-select-option>
+          </a-select>
         </a-form-item>
+
+        <a-divider>Target Table</a-divider>
+        <a-form-item label="Target Schema" name="targetSchema">
+          <a-select
+            v-model:value="tableFormState.targetSchema"
+            placeholder="Select or type new schema"
+            show-search
+            allow-clear
+            :loading="loadingSchemas"
+          >
+            <a-select-option v-for="schema in schemaList" :key="schema" :value="schema">
+              {{ schema }}
+            </a-select-option>
+          </a-select>
+        </a-form-item>
+        <a-form-item label="Target Table" name="targetTable" :rules="[{ required: true }]">
+          <a-input v-model:value="tableFormState.targetTable" placeholder="Target table name (e.g., users_masked)" />
+        </a-form-item>
+
         <a-form-item label="Order" name="orderNo">
-          <a-input-number v-model:value="tableFormState.orderNo" style="width: 100%" />
+          <a-input-number v-model:value="tableFormState.orderNo" style="width: 100%" min="0" />
         </a-form-item>
         <a-form-item label="Enabled" name="enabled">
           <a-switch v-model:checked="tableFormState.enabled" />
@@ -393,11 +435,19 @@ const editingTable = ref<any>(null)
 const tableFormState = reactive({
   id: undefined as number | undefined,
   tableName: '',
+  sourceSchema: '',
   sourceTable: '',
+  targetSchema: '',
   targetTable: '',
   orderNo: 0,
   enabled: true
 })
+
+// Schema and table selection
+const schemaList = ref<string[]>([])
+const sourceTableList = ref<string[]>([])
+const loadingSchemas = ref(false)
+const loadingTables = ref(false)
 
 // Column related
 const columnDrawerVisible = ref(false)
@@ -540,13 +590,38 @@ function onAlgorithmChange(code: string) {
 }
 
 function showTableModal(record?: any) {
+  // Load schemas when opening modal
+  loadSchemas()
+
   if (record) {
     editingTable.value = record
+    // Parse source table if it contains schema (e.g., "tpcds_1g.catalog_returns")
+    let sourceSchema = ''
+    let sourceTable = record.sourceTable || record.tableName
+
+    if (sourceTable && sourceTable.includes('.')) {
+      const parts = sourceTable.split('.')
+      sourceSchema = parts[0]
+      sourceTable = parts[1]
+    }
+
+    // Parse target table if it contains schema
+    let targetSchema = ''
+    let targetTable = record.targetTable || ''
+
+    if (targetTable && targetTable.includes('.')) {
+      const parts = targetTable.split('.')
+      targetSchema = parts[0]
+      targetTable = parts[1]
+    }
+
     Object.assign(tableFormState, {
       id: record.id,
       tableName: record.tableName,
-      sourceTable: record.sourceTable,
-      targetTable: record.targetTable,
+      sourceSchema: sourceSchema,
+      sourceTable: sourceTable,
+      targetSchema: targetSchema,
+      targetTable: targetTable,
       orderNo: record.orderNo,
       enabled: record.enabled
     })
@@ -555,7 +630,9 @@ function showTableModal(record?: any) {
     Object.assign(tableFormState, {
       id: undefined,
       tableName: '',
+      sourceSchema: task.value?.sourceSchema || '',
       sourceTable: '',
+      targetSchema: task.value?.targetSchema || '',
       targetTable: '',
       orderNo: 0,
       enabled: true
@@ -564,15 +641,89 @@ function showTableModal(record?: any) {
   tableModalVisible.value = true
 }
 
+async function loadSchemas() {
+  if (!task.value?.datasourceId) return
+
+  try {
+    loadingSchemas.value = true
+    const data = await request.get(`/datasources/${task.value.datasourceId}/tables`)
+    // Extract unique schemas from table names (format: schema.table)
+    const schemas = new Set<string>()
+    schemas.add('public')  // Always include public
+
+    if (Array.isArray(data)) {
+      data.forEach((table: any) => {
+        const tableName = table.tableName || table.table_name
+        if (tableName && tableName.includes('.')) {
+          schemas.add(tableName.split('.')[0])
+        }
+      })
+    }
+
+    schemaList.value = Array.from(schemas).sort()
+  } catch (error) {
+    console.error('Failed to load schemas', error)
+  } finally {
+    loadingSchemas.value = false
+  }
+}
+
+async function loadTablesForSchema(type: 'source' | 'target') {
+  if (!task.value?.datasourceId) return
+
+  const schema = type === 'source' ? tableFormState.sourceSchema : tableFormState.targetSchema
+  if (!schema) {
+    sourceTableList.value = []
+    return
+  }
+
+  try {
+    loadingTables.value = true
+    const data = await request.get(`/datasources/${task.value.datasourceId}/tables`, {
+      params: { schema }
+    })
+
+    if (Array.isArray(data)) {
+      sourceTableList.value = data.map((t: any) => {
+        const tableName = t.tableName || t.table_name
+        // Remove schema prefix if present
+        if (tableName && tableName.includes('.')) {
+          return tableName.split('.')[1]
+        }
+        return tableName
+      }).filter(Boolean)
+    }
+  } catch (error) {
+    console.error('Failed to load tables', error)
+  } finally {
+    loadingTables.value = false
+  }
+}
+
 async function handleTableModalOk() {
   try {
+    // Build full table names with schema prefix
+    const fullSourceTable = tableFormState.sourceSchema
+      ? `${tableFormState.sourceSchema}.${tableFormState.sourceTable}`
+      : tableFormState.sourceTable
+
+    const fullTargetTable = tableFormState.targetSchema
+      ? `${tableFormState.targetSchema}.${tableFormState.targetTable}`
+      : tableFormState.targetTable
+
+    const payload = {
+      ...tableFormState,
+      sourceTable: fullSourceTable,
+      targetTable: fullTargetTable
+    }
+
     if (editingTable.value && editingTable.value.id) {
-      await request.put(`/masking/tables/${editingTable.value.id}`, tableFormState)
+      await request.put(`/masking/tables/${editingTable.value.id}`, payload)
       message.success('Updated successfully')
     } else {
       await request.post(`/masking/tasks/${taskId.value}/tables`, {
         taskId: taskId.value,
-        ...tableFormState
+        ...payload
       })
       message.success('Added successfully')
     }

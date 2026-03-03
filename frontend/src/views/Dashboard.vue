@@ -2,7 +2,7 @@
   <div class="dashboard">
     <a-row :gutter="16">
       <a-col :span="6">
-        <a-card class="stat-card">
+        <a-card class="stat-card" :loading="loading">
           <a-statistic title="Data Sources" :value="stats.datasourceCount">
             <template #prefix>
               <DatabaseOutlined style="color: #1890ff" />
@@ -11,7 +11,7 @@
         </a-card>
       </a-col>
       <a-col :span="6">
-        <a-card class="stat-card">
+        <a-card class="stat-card" :loading="loading">
           <a-statistic title="Masking Tasks" :value="stats.maskingTaskCount">
             <template #prefix>
               <SafetyOutlined style="color: #52c41a" />
@@ -20,7 +20,7 @@
         </a-card>
       </a-col>
       <a-col :span="6">
-        <a-card class="stat-card">
+        <a-card class="stat-card" :loading="loading">
           <a-statistic title="Sync Tasks" :value="stats.syncTaskCount">
             <template #prefix>
               <SwapOutlined style="color: #722ed1" />
@@ -29,7 +29,7 @@
         </a-card>
       </a-col>
       <a-col :span="6">
-        <a-card class="stat-card">
+        <a-card class="stat-card" :loading="loading">
           <a-statistic title="Today's Executions" :value="stats.todayExecutionCount">
             <template #prefix>
               <PlayCircleOutlined style="color: #fa8c16" />
@@ -75,16 +75,33 @@
 
     <a-row :gutter="16" style="margin-top: 24px">
       <a-col :span="24">
-        <a-card title="Recent Executions">
-          <a-table :columns="executionColumns" :data-source="recentExecutions" :pagination="false" size="small">
+        <a-card title="Recent Executions" :loading="loading">
+          <a-table
+            :columns="executionColumns"
+            :data-source="recentExecutions"
+            :pagination="false"
+            size="small"
+          >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
                 <a-tag :color="getStatusColor(record.status)">
                   {{ getStatusText(record.status) }}
                 </a-tag>
               </template>
+              <template v-if="column.key === 'taskType'">
+                <a-tag :color="record.taskType === 'MASKING' ? 'blue' : 'purple'">
+                  {{ record.taskType === 'MASKING' ? 'Masking' : 'Sync' }}
+                </a-tag>
+              </template>
+              <template v-if="column.key === 'records'">
+                <span v-if="record.totalRecords">
+                  {{ record.successRecords || 0 }} / {{ record.totalRecords }}
+                </span>
+                <span v-else>-</span>
+              </template>
             </template>
           </a-table>
+          <a-empty v-if="!loading && recentExecutions.length === 0" description="No recent executions" />
         </a-card>
       </a-col>
     </a-row>
@@ -102,8 +119,10 @@ import {
   BranchesOutlined
 } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
+import request from '@/utils/request'
 
 const userStore = useUserStore()
+const loading = ref(false)
 
 const stats = reactive({
   datasourceCount: 0,
@@ -112,17 +131,15 @@ const stats = reactive({
   todayExecutionCount: 0
 })
 
-const recentExecutions = ref([
-  { id: 1, taskName: 'Customer Info Masking', status: 'SUCCESS', startTime: '2024-01-15 09:00:00', duration: '5 min' },
-  { id: 2, taskName: 'Order Data Sync', status: 'SUCCESS', startTime: '2024-01-15 08:30:00', duration: '12 min' },
-  { id: 3, taskName: 'Transaction Masking', status: 'FAILED', startTime: '2024-01-14 18:00:00', duration: '-' }
-])
+const recentExecutions = ref<any[]>([])
 
 const executionColumns = [
   { title: 'Task Name', dataIndex: 'taskName', key: 'taskName' },
-  { title: 'Status', dataIndex: 'status', key: 'status' },
+  { title: 'Type', dataIndex: 'taskType', key: 'taskType', width: 100 },
+  { title: 'Status', dataIndex: 'status', key: 'status', width: 100 },
+  { title: 'Records (Success/Total)', key: 'records', width: 150 },
   { title: 'Start Time', dataIndex: 'startTime', key: 'startTime' },
-  { title: 'Duration', dataIndex: 'duration', key: 'duration' }
+  { title: 'Duration', dataIndex: 'duration', key: 'duration', width: 100 }
 ]
 
 function getStatusColor(status: string): string {
@@ -145,12 +162,29 @@ function getStatusText(status: string): string {
   return texts[status] || status
 }
 
+async function loadDashboardStats() {
+  try {
+    loading.value = true
+    const data = await request.get('/system/dashboard/stats')
+
+    stats.datasourceCount = data.datasourceCount || 0
+    stats.maskingTaskCount = data.maskingTaskCount || 0
+    stats.syncTaskCount = data.syncTaskCount || 0
+    stats.todayExecutionCount = data.todayExecutionCount || 0
+
+    recentExecutions.value = (data.recentExecutions || []).map((item: any) => ({
+      key: item.id,
+      ...item
+    }))
+  } catch (error) {
+    console.error('Failed to load dashboard stats', error)
+  } finally {
+    loading.value = false
+  }
+}
+
 onMounted(() => {
-  // Mock data loading
-  stats.datasourceCount = 5
-  stats.maskingTaskCount = 12
-  stats.syncTaskCount = 8
-  stats.todayExecutionCount = 25
+  loadDashboardStats()
 })
 </script>
 

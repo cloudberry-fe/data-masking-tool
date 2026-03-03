@@ -1,9 +1,11 @@
 """
 系统管理API
 """
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+from datetime import datetime, date
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from sqlalchemy import func, select, and_
 
 from app.core.database import get_db
 from app.core.security import get_password_hash
@@ -21,8 +23,79 @@ from app.schemas.system import (
 )
 from app.services.user_service import UserService
 from app.api.deps import CurrentUser, DBSession, AuditLogger
+from app.models.datasource import DataSource
+from app.models.masking import MaskingTask, MaskingTaskExecution
+from app.models.sync import DataSyncTask
 
 router = APIRouter()
+
+
+# ==================== Dashboard 统计 ====================
+
+@router.get("/dashboard/stats", response_model=Response[Dict[str, Any]])
+def get_dashboard_stats(
+    db: DBSession,
+    current_user: CurrentUser,
+):
+    """获取 Dashboard 统计数据"""
+    # 数据源数量
+    datasource_count = db.scalar(select(func.count(DataSource.id))) or 0
+
+    # 脱敏任务数量
+    masking_task_count = db.scalar(select(func.count(MaskingTask.id))) or 0
+
+    # 同步任务数量
+    sync_task_count = db.scalar(select(func.count(DataSyncTask.id))) or 0
+
+    # 今日脱敏执行次数
+    today = date.today()
+    today_start = datetime.combine(today, datetime.min.time())
+    today_end = datetime.combine(today, datetime.max.time())
+
+    today_execution_count = db.scalar(
+        select(func.count(MaskingTaskExecution.id)).where(
+            and_(
+                MaskingTaskExecution.created_at >= today_start,
+                MaskingTaskExecution.created_at <= today_end
+            )
+        )
+    ) or 0
+
+    # 最近执行记录
+    recent_masking_executions = db.execute(
+        select(MaskingTaskExecution, MaskingTask.task_name)
+        .join(MaskingTask, MaskingTaskExecution.task_id == MaskingTask.id)
+        .order_by(MaskingTaskExecution.created_at.desc())
+        .limit(5)
+    ).all()
+
+    recent_executions = []
+    for row in recent_masking_executions:
+        execution = row[0]
+        task_name = row[1]
+        duration = None
+        if execution.start_time and execution.end_time:
+            delta = execution.end_time - execution.start_time
+            duration = f"{int(delta.total_seconds() // 60)} min {int(delta.total_seconds() % 60)} sec"
+
+        recent_executions.append({
+            "id": execution.id,
+            "taskName": task_name,
+            "taskType": "MASKING",
+            "status": execution.status,
+            "startTime": execution.start_time.isoformat() if execution.start_time else None,
+            "duration": duration,
+            "totalRecords": execution.total_records,
+            "successRecords": execution.success_records,
+        })
+
+    return Response(data={
+        "datasourceCount": datasource_count,
+        "maskingTaskCount": masking_task_count,
+        "syncTaskCount": sync_task_count,
+        "todayExecutionCount": today_execution_count,
+        "recentExecutions": recent_executions,
+    })
 
 
 # ==================== 用户管理 ====================

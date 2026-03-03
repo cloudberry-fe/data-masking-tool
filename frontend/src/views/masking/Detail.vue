@@ -515,8 +515,8 @@ function showTableModal(record?: any) {
 
 async function handleTableModalOk() {
   try {
-    if (editingTable.value) {
-      await request.put(`/masking/tables/${tableFormState.id}`, tableFormState)
+    if (editingTable.value && editingTable.value.id) {
+      await request.put(`/masking/tables/${editingTable.value.id}`, tableFormState)
       message.success('Updated successfully')
     } else {
       await request.post(`/masking/tasks/${taskId.value}/tables`, {

@@ -23,6 +23,7 @@ from app.schemas.masking import (
     MaskingTaskExecuteRequest,
 )
 from app.services.masking_service import MaskingService
+from app.models.datasource import DataSource
 from app.api.deps import CurrentUser, DBSession, AuditLogger
 
 router = APIRouter()
@@ -148,10 +149,20 @@ def execute_task(
 
     # 创建执行记录
     execution = MaskingService.create_execution(db, task_id, "MANUAL")
-    audit("EXECUTE", "masking", f"执行脱敏任务: {task.task_name}, 执行编号: {execution.execution_no}")
 
     # 同步执行（实际生产环境应该用Celery异步执行）
     result = MaskingService.execute_masking(db, task_id, execution.id)
+
+    # 记录审计日志，包含执行结果
+    if result.get("success"):
+        audit("EXECUTE", "masking",
+              f"执行脱敏任务: {task.task_name}, 执行编号: {execution.execution_no}, 成功记录: {result.get('success_records', 0)}",
+              response_result="SUCCESS")
+    else:
+        audit("EXECUTE", "masking",
+              f"执行脱敏任务: {task.task_name}, 执行编号: {execution.execution_no}",
+              response_result="FAILED",
+              error_message=result.get("message", "执行失败"))
 
     return Response(data=result, message=result.get("message", "任务已提交"))
 
@@ -439,3 +450,124 @@ def delete_template(
     if success:
         audit("DELETE", "masking", "删除脱敏模板")
     return Response(message="删除成功")
+
+
+# ==================== SQL 生成 ====================
+
+@router.post("/tasks/{task_id}/generate-sql", response_model=Response[Dict[str, Any]])
+def generate_task_sql(
+    task_id: int,
+    db: DBSession,
+    current_user: CurrentUser,
+):
+    """生成脱敏任务的SQL语句"""
+    from app.utils.hashdata_anon import (
+        HashDataAnonManager,
+        MaskingTableConfig,
+        MaskingColumnConfig,
+    )
+    from app.services.datasource_service import DataSourceService
+
+    task = MaskingService.get_task_with_details(db, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if not task.tables:
+        raise HTTPException(status_code=400, detail="任务没有配置表")
+
+    datasource = db.get(DataSource, task.datasource_id)
+    if not datasource:
+        raise HTTPException(status_code=404, detail="数据源不存在")
+
+    # 获取数据源配置
+    datasource_config = DataSourceService.get_datasource_config(datasource)
+    anon_manager = HashDataAnonManager(datasource_config)
+
+    # 生成所有表的SQL
+    all_sql_parts = []
+    source_schema = task.source_schema or "public"
+    target_schema = task.target_schema or "public"
+
+    for table_config in task.tables:
+        if not table_config.enabled or not table_config.columns:
+            continue
+
+        # 构建字段配置
+        masking_columns = [
+            MaskingColumnConfig(
+                column_name=col.column_name,
+                algorithm=col.masking_algorithm,
+                params=col.algorithm_params,
+            )
+            for col in table_config.columns
+        ]
+
+        masking_table_config = MaskingTableConfig(
+            source_table=table_config.source_table or table_config.table_name,
+            target_table=table_config.target_table or f"{table_config.table_name}_masked",
+            columns=masking_columns,
+        )
+
+        # 生成SQL
+        sql = anon_manager.generate_masking_sql(
+            masking_table_config,
+            source_schema=source_schema,
+            target_schema=target_schema,
+        )
+        all_sql_parts.append(sql)
+
+    if not all_sql_parts:
+        raise HTTPException(status_code=400, detail="没有可用的表配置")
+
+    combined_sql = "\n\n".join(all_sql_parts)
+
+    return Response(data={
+        "sql": combined_sql,
+        "tableCount": len(all_sql_parts),
+        "sourceSchema": source_schema,
+        "targetSchema": target_schema,
+    })
+
+
+# ==================== 执行详情 ====================
+
+@router.get("/executions/{execution_id}/logs", response_model=Response[Dict[str, Any]])
+def get_execution_logs(
+    execution_id: int,
+    db: DBSession,
+    current_user: CurrentUser,
+):
+    """获取执行日志详情"""
+    execution = MaskingService.get_execution(db, execution_id)
+    if not execution:
+        raise HTTPException(status_code=404, detail="执行记录不存在")
+
+    task = MaskingService.get_task(db, execution.task_id)
+
+    # 计算执行时长
+    duration = None
+    if execution.start_time and execution.end_time:
+        delta = execution.end_time - execution.start_time
+        duration = {
+            "seconds": int(delta.total_seconds()),
+            "formatted": f"{int(delta.total_seconds() // 60)} min {int(delta.total_seconds() % 60)} sec"
+        }
+
+    return Response(data={
+        "execution": {
+            "id": execution.id,
+            "executionNo": execution.execution_no,
+            "taskId": execution.task_id,
+            "taskName": task.task_name if task else None,
+            "triggerType": execution.trigger_type,
+            "status": execution.status,
+            "startTime": execution.start_time.isoformat() if execution.start_time else None,
+            "endTime": execution.end_time.isoformat() if execution.end_time else None,
+            "duration": duration,
+            "totalRecords": execution.total_records,
+            "successRecords": execution.success_records,
+            "failedRecords": execution.failed_records,
+            "errorMessage": execution.error_message,
+            "createdAt": execution.created_at.isoformat() if execution.created_at else None,
+        }
+    })

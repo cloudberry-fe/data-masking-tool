@@ -717,7 +717,7 @@ class HashDataAnonManager:
         return {
             "host": config.get("host", "localhost"),
             "port": config.get("port", 5432),
-            "database": config.get("database", "hashdata"),
+            "database": config.get("database_name") or config.get("database", "hashdata"),
             "user": config.get("username", "gpadmin"),
             "password": config.get("password", ""),
         }
@@ -879,8 +879,16 @@ class HashDataAnonManager:
         Returns:
             完整的脱敏 SQL 语句
         """
-        source_table_full = f"{source_schema}.{table_config.source_table}"
-        target_table_full = f"{target_schema}.{table_config.target_table}"
+        # 检查表名是否已包含 schema (如 tpcds_1g.catalog_returns)
+        if "." in table_config.source_table:
+            source_table_full = table_config.source_table
+        else:
+            source_table_full = f"{source_schema}.{table_config.source_table}"
+
+        if "." in table_config.target_table:
+            target_table_full = table_config.target_table
+        else:
+            target_table_full = f"{target_schema}.{table_config.target_table}"
 
         # 构建脱敏字段映射
         masked_columns = {}
@@ -904,7 +912,7 @@ class HashDataAnonManager:
             sql_parts.extend([
                 "-- 创建目标表（复制源表结构）",
                 f"DROP TABLE IF EXISTS {target_table_full};",
-                f"CREATE TABLE {target_table_full} (LIKE {source_table_full} INCLUDING ALL);",
+                f"CREATE TABLE {target_table_full} AS SELECT * FROM {source_table_full} LIMIT 0;",
                 "",
                 "-- 插入脱敏后的数据",
                 f"INSERT INTO {target_table_full}",
@@ -991,7 +999,11 @@ class HashDataAnonManager:
             conn.commit()
 
             # 获取处理行数
-            cursor.execute(f"SELECT count(*) FROM {target_schema}.{table_config.target_table}")
+            if "." in table_config.target_table:
+                target_table_ref = table_config.target_table
+            else:
+                target_table_ref = f"{target_schema}.{table_config.target_table}"
+            cursor.execute(f"SELECT count(*) FROM {target_table_ref}")
             rowcount = cursor.fetchone()[0]
 
             cursor.close()
@@ -1032,7 +1044,11 @@ class HashDataAnonManager:
             预览结果
         """
         try:
-            source_table_full = f"{source_schema}.{table_config.source_table}"
+            # 检查表名是否已包含 schema
+            if "." in table_config.source_table:
+                source_table_full = table_config.source_table
+            else:
+                source_table_full = f"{source_schema}.{table_config.source_table}"
 
             # 构建预览 SQL
             select_parts = []

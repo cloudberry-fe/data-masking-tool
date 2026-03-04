@@ -44,6 +44,12 @@
             {{ getStatusText(record.status) }}
           </a-tag>
         </template>
+        <template v-if="column.key === 'lastExecution'">
+          <a-tag v-if="record.lastExecutionStatus" :color="getExecutionStatusColor(record.lastExecutionStatus)">
+            {{ getExecutionStatusText(record.lastExecutionStatus) }}
+          </a-tag>
+          <span v-else class="text-gray-400">-</span>
+        </template>
         <template v-if="column.key === 'scheduleType'">
           {{ record.scheduleType === 'CRON' ? 'Scheduled' : 'Manual' }}
         </template>
@@ -164,6 +170,7 @@ const formState = reactive({
 const columns = [
   { title: 'Task Name', dataIndex: 'taskName', key: 'taskName' },
   { title: 'Status', key: 'status', width: 100 },
+  { title: 'Last Execution', key: 'lastExecution', width: 120 },
   { title: 'Schedule Type', key: 'scheduleType', width: 100 },
   { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt' },
   { title: 'Actions', key: 'actions', width: 280, fixed: 'right' as const }
@@ -190,6 +197,22 @@ async function loadData() {
       }
     })
     dataSource.value = data.items
+
+    // Load last execution status for each task
+    for (const task of dataSource.value) {
+      try {
+        const execData = await request.get(`/masking/tasks/${task.id}/executions`, {
+          params: { page: 1, pageSize: 1 }
+        })
+        if (execData.items && execData.items.length > 0) {
+          task.lastExecutionStatus = execData.items[0].status
+          task.lastExecutionTime = execData.items[0].startTime
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+
     pagination.total = data.total
   } finally {
     loading.value = false
@@ -304,6 +327,26 @@ function getStatusText(status: string): string {
   return texts[status] || status
 }
 
+function getExecutionStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    SUCCESS: 'success',
+    FAILED: 'error',
+    RUNNING: 'processing',
+    PENDING: 'default'
+  }
+  return colors[status] || 'default'
+}
+
+function getExecutionStatusText(status: string): string {
+  const texts: Record<string, string> = {
+    SUCCESS: 'Success',
+    FAILED: 'Failed',
+    RUNNING: 'Running',
+    PENDING: 'Pending'
+  }
+  return texts[status] || status
+}
+
 onMounted(() => {
   loadDatasources()
   loadData()
@@ -315,5 +358,8 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   margin-bottom: 16px;
+}
+.text-gray-400 {
+  color: #9ca3af;
 }
 </style>

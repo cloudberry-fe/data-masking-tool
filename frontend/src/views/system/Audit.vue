@@ -29,7 +29,7 @@
         <a-form-item label="Result">
           <a-select v-model:value="search.responseResult" placeholder="Please select" style="width: 120px" allow-clear>
             <a-select-option value="SUCCESS">Success</a-select-option>
-            <a-select-option value="FAIL">Failed</a-select-option>
+            <a-select-option value="FAILED">Failed</a-select-option>
           </a-select>
         </a-form-item>
         <a-form-item label="Time Range">

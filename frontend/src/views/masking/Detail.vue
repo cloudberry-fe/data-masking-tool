@@ -74,12 +74,24 @@
             :pagination="true"
             row-key="id"
             size="small"
+            @row-click="showExecutionDetail"
           >
             <template #bodyCell="{ column, record }">
               <template v-if="column.key === 'status'">
                 <a-tag :color="getExecutionStatusColor(record.status)">
                   {{ getExecutionStatusText(record.status) }}
                 </a-tag>
+              </template>
+              <template v-if="column.key === 'duration'">
+                <span v-if="record.startTime && record.endTime">
+                  {{ formatDuration(record.startTime, record.endTime) }}
+                </span>
+                <span v-else>-</span>
+              </template>
+              <template v-if="column.key === 'actions'">
+                <a-button type="link" size="small" @click.stop="showExecutionDetail(record)">
+                  View Details
+                </a-button>
               </template>
             </template>
           </a-table>
@@ -402,6 +414,57 @@
         :pagination="false"
       />
     </a-modal>
+
+    <!-- Execution Detail Modal -->
+    <a-modal
+      title="Execution Details"
+      v-model:open="executionDetailVisible"
+      :footer="null"
+      width="700px"
+    >
+      <a-descriptions v-if="selectedExecution" :column="2" bordered size="small">
+        <a-descriptions-item label="Execution No" :span="2">
+          {{ selectedExecution.executionNo }}
+        </a-descriptions-item>
+        <a-descriptions-item label="Status">
+          <a-tag :color="getExecutionStatusColor(selectedExecution.status)">
+            {{ getExecutionStatusText(selectedExecution.status) }}
+          </a-tag>
+        </a-descriptions-item>
+        <a-descriptions-item label="Trigger Type">
+          {{ selectedExecution.triggerType }}
+        </a-descriptions-item>
+        <a-descriptions-item label="Start Time">
+          {{ selectedExecution.startTime || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="End Time">
+          {{ selectedExecution.endTime || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="Duration">
+          {{ selectedExecution.duration?.formatted || '-' }}
+        </a-descriptions-item>
+        <a-descriptions-item label="Total Records">
+          {{ selectedExecution.totalRecords }}
+        </a-descriptions-item>
+        <a-descriptions-item label="Success Records">
+          <span class="text-green-600">{{ selectedExecution.successRecords }}</span>
+        </a-descriptions-item>
+        <a-descriptions-item label="Failed Records">
+          <span :class="selectedExecution.failedRecords > 0 ? 'text-red-600' : ''">
+            {{ selectedExecution.failedRecords }}
+          </span>
+        </a-descriptions-item>
+      </a-descriptions>
+
+      <a-divider v-if="selectedExecution?.errorMessage">Error Message</a-divider>
+      <a-alert
+        v-if="selectedExecution?.errorMessage"
+        type="error"
+        :message="selectedExecution.errorMessage"
+        show-icon
+        class="mt-4"
+      />
+    </a-modal>
   </div>
 </template>
 
@@ -491,6 +554,10 @@ const generatedSQL = ref('')
 const previewModalVisible = ref(false)
 const previewData = ref<any>({ columns: [], rows: [] })
 
+// Execution detail
+const executionDetailVisible = ref(false)
+const selectedExecution = ref<any>(null)
+
 const tableColumns = [
   { title: 'Table Name', dataIndex: 'tableName', key: 'tableName' },
   { title: 'Source Table', dataIndex: 'sourceTable', key: 'sourceTable' },
@@ -514,9 +581,11 @@ const executionColumns = [
   { title: 'Trigger Type', dataIndex: 'triggerType', key: 'triggerType' },
   { title: 'Status', key: 'status', width: 100 },
   { title: 'Start Time', dataIndex: 'startTime', key: 'startTime' },
+  { title: 'Duration', key: 'duration', width: 100 },
   { title: 'Total Records', dataIndex: 'totalRecords', key: 'totalRecords' },
   { title: 'Success', dataIndex: 'successRecords', key: 'successRecords' },
-  { title: 'Failed', dataIndex: 'failedRecords', key: 'failedRecords' }
+  { title: 'Failed', dataIndex: 'failedRecords', key: 'failedRecords' },
+  { title: 'Actions', key: 'actions', width: 120 }
 ]
 
 // Filtered algorithms based on category
@@ -931,32 +1000,12 @@ async function executeTask() {
 
 async function generateSQL() {
   try {
-    // Generate SQL for all tables
-    const sqlParts: string[] = []
-    for (const table of tables.value) {
-      if (table.enabled && table.columns?.length > 0) {
-        sqlParts.push(`-- Table: ${table.tableName}`)
-        sqlParts.push(`-- Source: ${table.sourceTable || table.tableName}`)
-        sqlParts.push(`-- Target: ${table.targetTable || table.tableName + '_masked'}`)
-        sqlParts.push('')
-
-        for (const col of table.columns) {
-          const algo = algorithms.value.find(a => a.code === col.maskingAlgorithm)
-          sqlParts.push(`--   ${col.columnName}: ${algo?.name || col.maskingAlgorithm}`)
-          if (col.algorithmParams) {
-            Object.entries(col.algorithmParams).forEach(([k, v]) => {
-              sqlParts.push(`--     ${k} = ${v}`)
-            })
-          }
-        }
-        sqlParts.push('')
-      }
-    }
-
-    generatedSQL.value = sqlParts.join('\n')
+    // Call backend API to generate real SQL
+    const data = await request.post(`/masking/tasks/${taskId.value}/generate-sql`)
+    generatedSQL.value = data.sql
     sqlModalVisible.value = true
-  } catch (error) {
-    message.error('Failed to generate SQL')
+  } catch (error: any) {
+    message.error(error.response?.data?.detail || 'Failed to generate SQL')
   }
 }
 
@@ -994,6 +1043,26 @@ function getExecutionStatusText(status: string): string {
     PENDING: 'Pending'
   }
   return texts[status] || status
+}
+
+function formatDuration(startTime: string, endTime: string): string {
+  if (!startTime || !endTime) return '-'
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  const seconds = Math.floor((end - start) / 1000)
+  return `${Math.floor(seconds / 60)}m ${seconds % 60}s`
+}
+
+async function showExecutionDetail(record: any) {
+  try {
+    const data = await request.get(`/masking/executions/${record.id}/logs`)
+    selectedExecution.value = data.execution
+    executionDetailVisible.value = true
+  } catch (error) {
+    // If the new API fails, show basic info
+    selectedExecution.value = record
+    executionDetailVisible.value = true
+  }
 }
 
 onMounted(() => {
@@ -1041,5 +1110,13 @@ onMounted(() => {
 
 .mt-4 {
   margin-top: 16px;
+}
+
+.text-green-600 {
+  color: #16a34a;
+}
+
+.text-red-600 {
+  color: #dc2626;
 }
 </style>

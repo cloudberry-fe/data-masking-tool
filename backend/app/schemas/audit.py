@@ -10,21 +10,21 @@ class AuditLogResponse(BaseModel):
     """审计日志响应"""
 
     id: int
-    user_id: Optional[int] = None
+    user_id: Optional[int] = Field(default=None, serialization_alias='userId')
     username: Optional[str] = None
-    operation_type: Optional[str] = None
-    operation_module: Optional[str] = None
-    operation_desc: Optional[str] = None
-    request_method: Optional[str] = None
-    request_url: Optional[str] = None
-    request_params: Optional[Dict[str, Any]] = None
-    response_result: Optional[str] = None
-    error_message: Optional[str] = None
-    ip_address: Optional[str] = None
-    user_agent: Optional[str] = None
-    created_at: datetime
+    operation_type: Optional[str] = Field(default=None, serialization_alias='operationType')
+    operation_module: Optional[str] = Field(default=None, serialization_alias='operationModule')
+    operation_desc: Optional[str] = Field(default=None, serialization_alias='operationDesc')
+    request_method: Optional[str] = Field(default=None, serialization_alias='requestMethod')
+    request_url: Optional[str] = Field(default=None, serialization_alias='requestUrl')
+    request_params: Optional[Dict[str, Any]] = Field(default=None, serialization_alias='requestParams')
+    response_result: Optional[str] = Field(default=None, serialization_alias='responseResult')
+    error_message: Optional[str] = Field(default=None, serialization_alias='errorMessage')
+    ip_address: Optional[str] = Field(default=None, serialization_alias='ipAddress')
+    user_agent: Optional[str] = Field(default=None, serialization_alias='userAgent')
+    created_at: datetime = Field(serialization_alias='createdAt')
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class AuditLogQuery(BaseModel):

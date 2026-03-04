@@ -15,7 +15,7 @@ from app.api.deps import CurrentUser, DBSession
 router = APIRouter()
 
 
-@router.get("/logs", response_model=Response[PageResponse[AuditLogResponse]])
+@router.get("/logs", response_model=Response[PageResponse[AuditLogResponse]], response_model_by_alias=True)
 def get_audit_logs(
     db: DBSession,
     current_user: CurrentUser,
@@ -41,7 +41,7 @@ def get_audit_logs(
     ))
 
 
-@router.get("/logs/{log_id}", response_model=Response[AuditLogResponse])
+@router.get("/logs/{log_id}", response_model=Response[AuditLogResponse], response_model_by_alias=True)
 def get_audit_log(
     log_id: int,
     db: DBSession,

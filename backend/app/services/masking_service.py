@@ -503,6 +503,7 @@ class MaskingService:
 
             total_success = 0
             total_failed = 0
+            error_messages = []
 
             # 逐个表执行脱敏
             for table_config in task.tables:
@@ -546,7 +547,32 @@ class MaskingService:
                     total_success += result.get("rowcount", 0)
                 else:
                     total_failed += 1
-                    logger.error(f"表 {table_config.table_name} 脱敏失败: {result.get('error')}")
+                    error_msg = f"表 {table_config.table_name} 脱敏失败: {result.get('error', result.get('message', '未知错误'))}"
+                    logger.error(error_msg)
+                    error_messages.append(error_msg)
+
+            # 判断整体执行结果
+            if total_failed > 0 or total_success == 0:
+                # 有失败或没有成功记录，标记为失败
+                combined_error = "; ".join(error_messages) if error_messages else "执行未产生有效结果"
+                MaskingService.update_execution_status(
+                    db,
+                    execution_id,
+                    "FAILED",
+                    end_time=datetime.now(),
+                    total_records=total_success,
+                    success_records=total_success,
+                    failed_records=total_failed,
+                    error_message=combined_error,
+                )
+                return {
+                    "success": False,
+                    "message": f"脱敏任务执行失败: {combined_error}",
+                    "total_records": total_success,
+                    "success_records": total_success,
+                    "failed_records": total_failed,
+                    "error_details": error_messages,
+                }
 
             # 更新执行状态为成功
             MaskingService.update_execution_status(
@@ -561,7 +587,7 @@ class MaskingService:
 
             return {
                 "success": True,
-                "message": "脱敏任务执行成功",
+                "message": f"脱敏任务执行成功，共处理 {total_success} 条记录",
                 "total_records": total_success,
                 "success_records": total_success,
                 "failed_records": total_failed,

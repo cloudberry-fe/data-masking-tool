@@ -494,6 +494,12 @@ class MaskingTaskBase(BaseModel):
         validation_alias=AliasChoices('datasource_id', 'datasourceId'),
         serialization_alias='datasourceId'
     )
+    masking_mode: str = Field(
+        default="STATIC",
+        description="脱敏模式: STATIC(静态脱敏), GENERALIZE(泛化脱敏)",
+        validation_alias=AliasChoices('masking_mode', 'maskingMode'),
+        serialization_alias='maskingMode'
+    )
     source_schema: Optional[str] = Field(
         default=None,
         max_length=128,

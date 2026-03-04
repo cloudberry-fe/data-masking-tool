@@ -30,13 +30,25 @@ const routes: RouteRecordRaw[] = [
         path: 'masking',
         name: 'Masking',
         component: () => import('@/views/masking/List.vue'),
-        meta: { title: '数据脱敏', icon: 'safety' }
+        meta: { title: '静态脱敏', icon: 'safety' }
       },
       {
         path: 'masking/:id',
         name: 'MaskingDetail',
         component: () => import('@/views/masking/Detail.vue'),
         meta: { title: '脱敏任务详情', hidden: true }
+      },
+      {
+        path: 'dynamic-masking',
+        name: 'DynamicMasking',
+        component: () => import('@/views/dynamic-masking/List.vue'),
+        meta: { title: '动态脱敏', icon: 'eye' }
+      },
+      {
+        path: 'anonymization',
+        name: 'Anonymization',
+        component: () => import('@/views/anonymization/List.vue'),
+        meta: { title: '原地匿名化', icon: 'warning' }
       },
       {
         path: 'lineage',

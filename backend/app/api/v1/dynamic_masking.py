@@ -168,43 +168,6 @@ def add_column_rule(
     return Response(message=f"字段 {request.column_name} 脱敏规则添加成功")
 
 
-@router.post("/rules/{rule_id}/columns", response_model=Response)
-def add_column_rule(
-    rule_id: int,
-    column_name: str,
-    masking_algorithm: str,
-    algorithm_params: Optional[Dict[str, Any]] = None,
-    db: DBSession = None,
-    current_user: CurrentUser = None,
-):
-    """
-    为动态脱敏规则添加字段脱敏配置
-
-    参数:
-    - rule_id: 规则ID
-    - column_name: 字段名
-    - masking_algorithm: 脱敏算法（如 anon.partial, anon.fake_email）
-    - algorithm_params: 算法参数
-    """
-    from app.models.dynamic_masking import DynamicMaskingRule, DynamicMaskingColumnRule
-
-    rule = db.get(DynamicMaskingRule, rule_id)
-    if not rule:
-        raise HTTPException(status_code=404, detail="规则不存在")
-
-    column_rule = DynamicMaskingColumnRule(
-        rule_id=rule_id,
-        column_name=column_name,
-        masking_algorithm=masking_algorithm,
-        algorithm_params=algorithm_params or {},
-    )
-
-    db.add(column_rule)
-    db.commit()
-
-    return Response(message=f"字段 {column_name} 脱敏规则添加成功")
-
-
 @router.post("/rules/{rule_id}/enable", response_model=Response)
 def enable_dynamic_rule(
     rule_id: int,

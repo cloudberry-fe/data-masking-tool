@@ -857,6 +857,14 @@ class HashDataAnonManager:
                 salt = params.get("salt", "")
                 algo = params.get("algorithm", "sha256")
                 return f"{func_name}({column}::text, '{salt}', '{algo}')"
+            # 对于 noise 函数，字段是第一个参数（数值类型）
+            elif algorithm == "anon.noise":
+                ratio = params.get("ratio", 0.1)
+                return f"{func_name}({column}, {ratio})"
+            # 对于 dnoise 函数，字段是第一个参数（日期类型）
+            elif algorithm == "anon.dnoise":
+                interval = params.get("interval", "30 days")
+                return f"{func_name}({column}, '{interval}')"
             else:
                 # 其他需要字段参数的函数
                 param_values.append(f"{column}::text")
@@ -921,6 +929,10 @@ class HashDataAnonManager:
             return True
         if algo_lower.startswith("anon.pseudo_"):
             return True  # 但 pseudo 函数的 seed 参数单独处理
+
+        # 噪声类函数 - 需要字段参数
+        if algo_lower in ["anon.noise", "anon.dnoise"]:
+            return True
 
         # 随机类函数带范围参数的，不需要字段
         if algo_lower in ["anon.random_int_between", "anon.random_bigint_between",

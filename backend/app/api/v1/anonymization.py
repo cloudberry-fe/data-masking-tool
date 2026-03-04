@@ -343,6 +343,31 @@ def preview_anonymization_sql(
     })
 
 
+@router.delete("/tasks/{task_id}", response_model=Response)
+def delete_anonymization_task(
+    task_id: int,
+    db: DBSession = None,
+    current_user: CurrentUser = None,
+    audit: AuditLogger = None,
+):
+    """删除匿名化任务（仅限DRAFT状态）"""
+    from app.models.dynamic_masking import AnonymizationTask
+
+    task = db.get(AnonymizationTask, task_id)
+    if not task:
+        raise HTTPException(status_code=404, detail="任务不存在")
+
+    if task.status == "EXECUTED":
+        raise HTTPException(status_code=400, detail="已执行的任务不能删除")
+
+    db.delete(task)
+    db.commit()
+
+    audit("DELETE", "anonymization", f"删除匿名化任务: {task.task_name}")
+
+    return Response(message="删除成功")
+
+
 @router.get("/executions/{execution_id}", response_model=Response)
 def get_execution_detail(
     execution_id: int,

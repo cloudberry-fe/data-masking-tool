@@ -67,6 +67,7 @@ def create_task(
         datasource_id=request.datasource_id,
         task_code=request.task_code,
         description=request.description,
+        masking_mode=request.masking_mode,
         source_schema=request.source_schema,
         target_schema=request.target_schema,
         task_type=request.task_type,

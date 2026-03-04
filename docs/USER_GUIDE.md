@@ -1,13 +1,19 @@
 # Cloudberry Data Management Console - User Guide
 
 ## Table of Contents
+
 1. [Quick Start](#quick-start)
-2. [Data Source Management](#data-source-management)
-3. [Data Masking](#data-masking)
-4. [Data Lineage](#data-lineage)
-5. [Data Synchronization](#data-synchronization)
-6. [System Management](#system-management)
-7. [Masking Algorithms](#masking-algorithms)
+2. [Language Settings](#language-settings)
+3. [Data Source Management](#data-source-management)
+4. [Data Masking](#data-masking)
+   - [Masking Modes](#masking-modes)
+   - [Static Masking](#static-masking)
+   - [Dynamic Masking](#dynamic-masking)
+   - [Anonymization](#anonymization)
+5. [Data Lineage](#data-lineage)
+6. [Data Synchronization](#data-synchronization)
+7. [System Management](#system-management)
+8. [Masking Algorithms](#masking-algorithms)
 
 ---
 
@@ -48,437 +54,442 @@ npm run dev
 ```
 
 ### 2. Access the System
-- Frontend URL: http://localhost
-- Backend API: http://localhost:8000
-- API Documentation: http://localhost:8000/api/docs
 
-### 3. Login to System
-- Default Username: `admin`
-- Default Password: `admin123`
+After startup, access the system:
+- **Frontend UI**: http://localhost (or http://localhost:5173 for dev mode)
+- **Backend API**: http://localhost:8000
+- **API Documentation**: http://localhost:8000/api/docs
+
+### 3. Default Credentials
+
+| Username | Password | Role |
+|----------|----------|------|
+| admin | admin123 | Super Admin |
 
 > ⚠️ **Security Warning**: Please change the default password immediately after first login!
 
 ---
 
+## Language Settings
+
+### Switching Languages
+
+The system supports **English** and **中文** (Chinese) languages.
+
+1. Click the **🌍** (globe) icon in the top right corner of the header
+2. Select your preferred language from the dropdown:
+   - 🇺🇸 **English** - Default language
+   - 🇨🇳 **中文** - Chinese (Simplified)
+
+The language preference is saved automatically in your browser and will persist across sessions.
+
+---
+
 ## Data Source Management
 
-### 1. Add a Data Source
+### Adding a Data Source
 
-1. Click **"Data Sources"** in the left menu
-2. Click **"New Data Source"** in the top-right corner
-3. Fill in the data source information:
+1. Navigate to **Data Sources** from the sidebar menu
+2. Click **New Data Source**
+3. Fill in the connection details:
+   - **Data Source Name**: Descriptive name for identification
+   - **Data Source Type**: Select database type (MPP, PostgreSQL, MySQL, Oracle, Dameng)
+   - **Host**: Database server address
+   - **Port**: Database port number
+   - **Database Name**: Target database name
+   - **Username**: Database username
+   - **Password**: Database password
+4. Click **Test Connection** to verify connectivity
+5. Click **Save** to create the data source
 
-| Field | Description | Example |
-|-------|-------------|---------|
-| Data Source Name | Custom name | Production MPP Database |
-| Data Source Type | Select database type | HashData Lightning (MPP) |
-| Host Address | Database server IP | 192.168.1.100 |
-| Port | Database port | 5432 |
-| Database Name | Database name | hashdata |
-| Username | Database username | gpadmin |
-| Password | Database password | ******** |
+### Editing a Data Source
 
-4. Click **"Test Connection"** to verify the configuration
-5. Click **"OK"** to save
-
-### 2. Manage Data Sources
-
-- **Edit**: Click "Edit" in the actions column to modify data source information
-- **Delete**: Click "Delete" to remove a data source (requires confirmation)
-- **Test Connection**: Click "Test Connection" to verify if connection works
-- **View References**: View which tasks reference the data source on the detail page
-
-### 3. Account Mapping
-
-To enable account mapping:
-1. Edit the data source and enable "Enable Account Mapping"
-2. Configure source-to-target account mappings in the data source details
+1. Find the data source in the list
+2. Click **Edit**
+3. Modify the required fields
+4. Click **Test Connection** to verify
+5. Click **Save**
 
 ---
 
 ## Data Masking
 
-### 1. Create a Masking Task
+### Masking Modes
 
-1. Click **"Data Masking"** in the left menu
-2. Click **"New Task"** in the top-right corner
-3. Fill in task information:
-   - Task Name: Customer Information Masking
-   - Data Source: Select a configured data source
-   - Source Schema: public (optional)
-   - Target Schema: public (optional)
-   - Schedule Type: Manual / Scheduled
+The system supports **four masking modes** for different use cases:
 
-### 2. Configure Tables and Fields
+| Mode | Description | Use Case | Original Data | Irreversible |
+|------|-------------|----------|---------------|--------------|
+| **Static Masking** | Create masked data copy | Dev/Test environments, Data export | Unchanged | No |
+| **Dynamic Masking** | Role-based query masking | Production environments | Unchanged | No |
+| **Anonymization** | Permanent data modification | GDPR compliance, Data destruction | Modified | Yes |
+| **Generalization** | Convert to ranges | Data analytics, Statistical reports | Unchanged | No |
 
-Click **"Configure"** in the task list to enter task details:
+### Choosing the Right Mode
 
-#### Add a Table
-1. Click **"Add Table"**
-2. Enter table name, or select from data source
-3. Set source and target table names
-4. Click "OK"
-
-#### Configure Field Masking
-1. Click **"Field Configuration"** for a table
-2. Click **"Manual Add"** or **"Select from Table"**
-3. Select fields and masking algorithms
-
-### 3. Masking Algorithm Configuration
-
-The system provides 72 built-in masking algorithms across 8 categories:
-
-| Category | Algorithms | Description |
-|----------|------------|-------------|
-| FAKE | fake_address, fake_city, fake_email, etc. | Generate realistic fake data |
-| RANDOM | random_int, random_string, random_date | Generate random values |
-| PARTIAL | partial, partial_email, partial_phone | Partial masking with wildcards |
-| PSEUDO | pseudo_first_name, pseudo_last_name | Deterministic pseudonym substitution |
-| HASH | digest, hash | One-way hash transformation |
-| NOISE | add_noise, add_noise_numeric | Add random noise |
-| GENERALIZE | generalize_date, generalize_number | Convert exact values to ranges |
-| CONDITIONAL | MASK, REPLACE, NULL, ROUND, OFFSET | Conditional masking operators |
-
-### 4. Execute Masking Tasks
-
-1. Click **"Execute"** in task list or detail page
-2. Confirm and the task starts executing
-3. View execution status and results in **"Execution History"**
-
-### 5. View Execution Details
-
-After task execution, you can view detailed information:
-
-1. Click on an execution record to view details
-2. Information includes:
-   - Execution number
-   - Status (SUCCESS/FAILED/RUNNING)
-   - Start time and end time
-   - Duration (formatted as "Xm Ys")
-   - Total records processed
-   - Success/failed record counts
-   - Error messages (if any)
-
-### 6. Generate SQL
-
-You can generate SQL statements for a masking task:
-
-1. Click **"Generate SQL"** in the task detail page
-2. View the generated SQL statements
-3. SQL includes:
-   - DROP TABLE (if target exists)
-   - CREATE TABLE (copy structure)
-   - INSERT (copy data)
-   - UPDATE (apply masking)
-
-### 7. Using HashData Anon Extension
-
-The system integrates HashData Lightning's Anon extension for high-performance masking:
-
-```sql
--- Anon extension usage examples
-SELECT anon.partial('13812345678', 3, 4);  -- 138****5678
-SELECT anon.digest('secret', 'sha256');      -- Hash masking
-SELECT anon.random_first_name();               -- Random first name
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Which Masking Mode?                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  Do you need to modify original data?                       │
+│  ├── NO  → Do you need real-time masking?                   │
+│  │         ├── YES → Dynamic Masking                        │
+│  │         └── NO  → Static Masking or Generalization       │
+│  │                    ├── Preserve format? → Static         │
+│  │                    └── For analytics? → Generalization   │
+│  │                                                          │
+│  └── YES → Anonymization (⚠️ IRREVERSIBLE!)                 │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-### 8. Important Notes for Numeric Fields
+### Static Masking
 
-When using the **REPLACE** algorithm on numeric fields:
+Static masking creates a new table with masked data, leaving the original data unchanged.
 
-- Ensure the replacement value fits within the field's precision
-- For example, `numeric(7,2)` has max value of 99999.99
-- Use values like `99.99` instead of `123123`
-- The system automatically detects numeric types and formats values correctly
+#### Creating a Static Masking Task
+
+1. Navigate to **Data Masking > Static Masking**
+2. Click **New Task**
+3. Fill in the form:
+   - **Task Name**: Descriptive name (e.g., "Customer Data Masking")
+   - **Data Source**: Select the target database
+   - **Masking Mode**: Select "Static Masking"
+   - **Source Schema**: Source schema name (default: public)
+   - **Target Schema**: Target schema name (default: public)
+4. Click **Save**
+
+#### Configuring Tables and Columns
+
+1. Click **Configure** on the created task
+2. Click **Add Table**
+3. Enter table configuration:
+   - **Table Name**: Identifier for this table config
+   - **Source Table**: Original table name
+   - **Target Table**: Masked table name (e.g., `users_masked`)
+4. Click **Select from Database** to load columns automatically, or add columns manually
+5. For each column, select a masking algorithm and configure parameters
+
+#### Executing the Task
+
+1. Return to the task list
+2. Click **Execute** on the task
+3. The system will:
+   - Create the target table
+   - Copy data from source table
+   - Apply masking transformations
+   - Display execution results
+
+### Dynamic Masking
+
+Dynamic masking applies role-based masking rules on queries, without modifying the original data. Different database roles see different data when querying the same table.
+
+#### Features:
+- Original data remains unchanged
+- Different roles see different data
+- Uses PostgreSQL SECURITY LABEL mechanism
+- Real-time masking on query
+- Suitable for production environments
+
+#### Creating a Dynamic Masking Rule
+
+1. Navigate to **Data Masking > Dynamic Masking**
+2. Click **New Rule**
+3. Configure the rule:
+   - **Rule Name**: Descriptive name
+   - **Data Source**: Target database
+   - **Schema Name**: Schema (default: public)
+   - **Table Name**: Table to apply masking
+   - **Masked Roles**: Database roles that will see masked data
+   - **Exempted Roles**: Database roles that can see original data
+4. Click **Save**
+
+#### Adding Column Rules
+
+1. Click **Configure** on the rule
+2. Add column masking rules:
+   - **Column Name**: Column to mask
+   - **Masking Algorithm**: Algorithm to apply
+   - **Parameters**: Algorithm parameters
+3. Click **Save**
+
+#### Enabling the Rule
+
+1. Click **Enable** on the rule
+2. The system will generate and execute SQL to:
+   - Set SECURITY LABEL on columns
+   - Create masked views
+   - Grant appropriate permissions
+
+#### Example SQL Generated:
+
+```sql
+-- Create masked role if not exists
+CREATE ROLE analyst NOINHERIT;
+
+-- Set security label on column
+SECURITY LABEL FOR anon ON COLUMN public.users.email
+  IS 'MASKED WITH FUNCTION anon.fake_email()';
+
+-- Create masked view
+CREATE VIEW public.users_masked AS SELECT * FROM public.users;
+
+-- Grant access to masked view
+GRANT SELECT ON public.users_masked TO analyst;
+```
+
+### Anonymization
+
+⚠️ **WARNING**: Anonymization permanently modifies the original table data. This operation is **IRREVERSIBLE**. Always enable backup!
+
+#### Features:
+- Permanent data modification in original table
+- Optional backup before execution
+- Suitable for GDPR compliance
+- Data destruction scenarios
+
+#### Creating an Anonymization Task
+
+1. Navigate to **Data Masking > Anonymization**
+2. Click **New Task**
+3. Configure:
+   - **Task Name**: Descriptive name
+   - **Data Source**: Target database
+   - **Schema Name**: Schema name
+   - **Table Name**: Table to anonymize
+   - **Backup Before Anonymize**: ✓ (Strongly recommended!)
+   - **Description**: Task description
+4. Click **Save**
+
+#### Adding Column Rules
+
+Same as static masking - configure which columns to anonymize and which algorithms to use.
+
+#### Preview and Execute
+
+1. Click **Preview SQL** to review the generated SQL
+2. Verify the backup table name
+3. Click **Execute** to anonymize
+
+#### Example SQL Generated:
+
+```sql
+-- Create backup table
+CREATE TABLE public.users_backup_20260304 AS SELECT * FROM public.users;
+
+-- Anonymize columns (permanent UPDATE)
+UPDATE public.users SET email = anon.fake_email();
+UPDATE public.users SET phone = anon.partial(phone::text, 3, '*', 4);
+UPDATE public.users SET salary = anon.noise(salary, 0.15);
+```
 
 ---
 
 ## Data Lineage
 
-### 1. View Lineage Graph
+The Data Lineage module provides visual analysis of data flow and dependencies.
 
-1. Click **"Data Lineage"** in the left menu
+1. Navigate to **Lineage Analysis**
 2. Select a data source
-3. Click **"Analyze"** to generate lineage graph
-
-### 2. Graph Operations
-
-- **Zoom**: Use mouse wheel to zoom in/out
-- **Pan**: Drag the canvas to move view
-- **Node Details**: Click nodes to view details
+3. Select a table to analyze
+4. View upstream (sources) and downstream (targets) dependencies
 
 ---
 
 ## Data Synchronization
 
-### 1. Create a Sync Task
+The Data Sync module enables data migration between databases.
 
-1. Click **"Data Sync"** in the left menu
-2. Click **"New Task"**
-3. Configure the task:
-   - Task Name
-   - Source Data Source
-   - Target Data Source
-   - Sync Mode: Full / Incremental
-   - Schedule Type: Manual / Scheduled
+### Creating a Sync Task
 
-### 2. Execute Sync
-
-Click **"Execute"** to start the sync task. View execution status in the task list.
+1. Navigate to **Data Sync**
+2. Click **New Task**
+3. Configure:
+   - **Task Name**: Descriptive name
+   - **Source Data Source**: Source database
+   - **Target Data Source**: Target database
+   - **Sync Mode**: Full sync or Incremental sync
+4. Add table mappings
+5. Configure field mappings if needed
+6. Save and execute
 
 ---
 
 ## System Management
 
-### 1. User Management
+### User Management
 
-#### Add User
-1. Go to **"System Management" → "Users"**
-2. Click **"New User"**
-3. Fill in user information:
-   - Username (unique)
-   - Password
-   - Real Name
-   - Email, Phone (optional)
+1. Navigate to **System > Users**
+2. View, create, edit, or delete users
+3. Assign roles to users
+4. Reset passwords
 
-#### Assign Roles
-1. Click **"Assign Roles"** for a user
-2. Check the required roles
-3. Click "OK"
+### Role Management
 
-#### Other Operations
-- **Edit**: Modify user information
-- **Enable/Disable**: Toggle user status
-- **Delete**: Remove user (cannot delete yourself)
+1. Navigate to **System > Roles**
+2. Create and configure roles
+3. Assign permissions to roles
+4. Permissions include:
+   - Menu access
+   - Operation permissions (create, edit, delete, execute)
+   - Data permissions
 
-### 2. Role Management
+### Audit Logs
 
-#### Create Role
-1. Go to **"System Management" → "Roles"**
-2. Click **"New"**
-3. Fill in role code and name
-
-#### Configure Permissions
-1. Click to select a role in the role list
-2. Check permissions in the right configuration area
-3. Click **"Save"**
-
-#### Permission Categories
-
-| Module | Permission Description |
-|--------|------------------------|
-| Data Source Management | View, create, edit, delete data sources |
-| Data Masking | View, create, edit, execute masking tasks |
-| Data Lineage | View lineage graphs |
-| Data Sync | View, create, execute sync tasks |
-| System Management | Users, roles, audit log management |
-
-### 3. Audit Logs
-
-#### View Logs
-Go to **"System Management" → "Audit Logs"** to view all operation logs:
-
-- **Operation Type**: LOGIN/LOGOUT/CREATE/UPDATE/DELETE/EXECUTE
-- **Operation Module**: auth/datasource/masking/lineage/sync/system
-- **Result**: Success/Failure
-- **Time Range**: Filter by time
-
-#### Log Details
-Click "Details" to view complete log information, including:
-- Request parameters
-- Error message (if any)
-- IP address
-- User-Agent
-
-#### Execution Audit
-When executing masking tasks, audit logs record:
-- Task name and execution number
-- Success/failure status
-- Number of records processed
-- Error details if failed
+1. Navigate to **System > Audit Logs**
+2. View comprehensive operation history
+3. Filter by:
+   - Operation type (CREATE, UPDATE, DELETE, EXECUTE)
+   - Module (datasource, masking, system)
+   - Time range
+   - User
 
 ---
 
 ## Masking Algorithms
 
-### 1. Mask Algorithm (MASK)
+### Algorithm Categories
 
-Suitable for phone numbers, ID cards, bank cards that need to retain partial information.
+| Category | Description | Use Case |
+|----------|-------------|----------|
+| **Fake Data** | Generate realistic fake data | Names, emails, addresses |
+| **Random** | Generate random values | IDs, codes |
+| **Partial** | Preserve partial information | Phone numbers, ID cards |
+| **Pseudonymization** | Deterministic replacement | Consistent fake data |
+| **Hash** | One-way hash transformation | Passwords, sensitive IDs |
+| **Noise** | Add random noise | Salaries, ages |
+| **Generalization** | Convert to ranges | Age groups, salary ranges |
 
-**Parameters**:
-- `prefix_length`: Prefix retention length, default 3
-- `suffix_length`: Suffix retention length, default 4
-- `mask_char`: Mask character, default *
+### Common Algorithms Reference
 
-**Example**:
+#### anon.fake_email
+Generate fake but valid email addresses.
 ```
-Phone: 13812345678 → 138****5678
-ID card: 110101199001011234 → 110***********1234
-```
-
-### 2. Hash Algorithm (HASH)
-
-Uses SHA-256 algorithm for irreversible hashing, suitable for unique identifiers.
-
-**Parameters**:
-- `salt`: Salt value (optional, increases security)
-
-**Example**:
-```
-Original value: abc123
-Hash value: a665a45920422f9d417e4866ef6e32b7...
+Original: zhangsan@example.com
+Masked:   lauren95@example.com
 ```
 
-### 3. Replace Algorithm (REPLACE)
-
-Replaces original data with a fixed value.
-
-**Parameters**:
-- `replacement`: Replacement value
-
-**Note**: For numeric fields, ensure the value fits within the field's precision.
-
-**Example**:
+#### anon.fake_first_name
+Generate fake first names.
 ```
-Original value: Zhang San
-Replacement value: ***
-
-For numeric(7,2): Use 99.99 instead of 123123
+Original: 张三
+Masked:   Ronnie
 ```
 
-### 4. Null Algorithm (NULL)
-
-Sets field value to NULL.
-
-### 5. Round Algorithm (ROUND)
-
-Rounds numeric values, suitable for amounts, ages, etc.
-
-**Parameters**:
-- `precision`: Precision, negative means power of 10
-
-**Example**:
+#### anon.fake_phone_number
+Generate fake phone numbers.
 ```
-precision=-3: 12345.67 → 12000
-precision=2: 12.345 → 12.35
+Original: 13812345678
+Masked:   01-23-45-67-89
 ```
 
-### 6. Offset Algorithm (OFFSET)
+#### anon.partial
+Partial masking - preserve prefix and suffix.
 
-Applies fixed offset to numeric values, suitable for scenarios needing relative relationships preserved.
+**Parameters:**
+- `prefix_len`: Characters to keep at start (default: 2)
+- `mask_char`: Masking character (default: '*')
+- `suffix_len`: Characters to keep at end (default: 2)
 
-**Parameters**:
-- `offset`: Offset amount
-- `min_value`: Minimum value (optional)
-- `max_value`: Maximum value (optional)
-
-**Example**:
 ```
-offset=5: 30 → 35
+Original: 13812345678
+Params:   prefix_len=3, mask_char='*', suffix_len=4
+Masked:   138****5678
 ```
 
-### 7. Format-Preserving Algorithm (PRESERVATION)
+#### anon.noise
+Add random noise to numeric values.
 
-Randomizes while preserving data format, such as replacing names with random names, addresses with random addresses.
+**Parameters:**
+- `ratio`: Noise ratio (e.g., 0.15 means ±15%)
 
-### 8. Fake Data Generation (FAKE)
+```
+Original: 15000.00
+Params:   ratio=0.15
+Masked:   15135.68 (within ±15% of original)
+```
 
-Generates realistic fake data:
-- `anon.fake_email()` - Random email
-- `anon.fake_first_name()` - Random first name
-- `anon.fake_last_name()` - Random last name
-- `anon.fake_address()` - Random address
-- `anon.fake_city()` - Random city
-- `anon.fake_country()` - Random country
+#### anon.digest
+Hash transformation with custom salt.
+
+**Parameters:**
+- `salt`: Salt value for hashing
+- `algorithm`: Hash algorithm (md5, sha1, sha256)
+
+```
+Original: 110101199001011234
+Params:   salt='my_salt', algorithm='sha256'
+Masked:   5d41402abc4b2a76b9719d911017c592...
+```
+
+#### anon.hash
+Hash transformation with system salt.
+```
+Original: sensitive_data
+Masked:   a1b2c3d4e5f6...
+```
 
 ---
 
 ## Best Practices
 
-### 1. Data Security
-- Regularly change administrator password
-- Follow least privilege principle for role assignment
-- Regularly backup metadata database
-- Approval process before sensitive operations
+### 1. Always Backup Before Anonymization
+Enable the backup option when performing anonymization to protect against accidental data loss.
 
-### 2. Masking Configuration
-- Test masking rules in test environment first
-- Backup important data before masking
-- Use mask and format preservation to minimize business impact
-- Reasonably set target tables, avoid overwriting source tables
+### 2. Test with Small Datasets First
+Before running masking on production data, test with a small sample to verify the results meet expectations.
 
-### 3. Performance Optimization
-- Use HashData MPP database for parallel processing
-- Reasonably set task batch sizes
-- Execute masking tasks during off-peak hours
-- Regularly clean execution history logs
+### 3. Choose Appropriate Algorithms
 
-### 4. Operation & Monitoring
-- Configure task failure alerts
-- Regularly check disk space
-- Monitor masking task execution duration
-- Regularly audit operation logs
+| Data Type | Recommended Algorithm |
+|-----------|----------------------|
+| Email | `anon.fake_email` |
+| Phone | `anon.partial` (preserve area code) |
+| Name | `anon.fake_first_name`, `anon.fake_last_name` |
+| ID Card | `anon.digest` or `anon.hash` |
+| Salary | `anon.noise` or generalization |
+| Address | `anon.fake_address` |
 
----
+### 4. Use Dynamic Masking for Production
+For production environments where original data must be preserved, use dynamic masking instead of anonymization.
 
-## FAQ
-
-### Q: What if data source connection test fails?
-A: Check these:
-- Network connectivity: `telnet host port`
-- Username/password are correct
-- Database allows remote connections (check pg_hba.conf)
-- Firewall has port open
-
-### Q: What if masking task executes very slowly?
-A: Optimization suggestions:
-- Use HashData MPP database to leverage parallel processing
-- Process large tables in batches
-- Avoid peak business hours
-- Check if Anon extension is enabled
-
-### Q: How to rollback masking operations?
-A: Recommendations:
-- Backup data before masking
-- Use target tables instead of overwriting source tables
-- Keep source data until verification passes
-
-### Q: Which database types are supported?
-A: Currently supported:
-- HashData Lightning (MPP)
-- PostgreSQL
-- MySQL
-- Oracle
-- GoldenDB
-- Dameng
-
-### Q: How to use scheduled execution?
-A: Configure Cron expression:
-- `0 0 2 * * ?` Every day at 2 AM
-- `0 0 2 * * 0` Every Sunday at 2 AM
-- `0 0 2 1 * ?` Every 1st of month at 2 AM
-
-### Q: Why does REPLACE algorithm fail on numeric fields?
-A: Ensure the replacement value fits within the field's numeric precision:
-- Check the field definition (e.g., `numeric(7,2)` means max ~99999.99)
-- Use a smaller value that fits the precision
-- The system auto-detects numeric types but values must be valid
+### 5. Review Generated SQL
+Always preview the generated SQL before executing to understand what operations will be performed.
 
 ---
 
-## Appendix
+## Troubleshooting
 
-### Cron Expression Reference
-```
-Second Minute Hour Day Month Weekday
-0      0      2    *   *     ?  → Execute daily at 2 AM
-```
+### Connection Failed
+- Verify the database host and port are accessible
+- Check firewall rules
+- Verify username and password
+- Ensure the database exists
 
-### Contact
-- Issues: Submit to Issue tracker
-- Documentation: Check docs/ directory
+### Masking Execution Failed
+- Check algorithm compatibility with column data type
+- Verify the target table doesn't already exist (for static masking)
+- Check database user has necessary permissions
+- Review error messages in execution history
+
+### Language Not Changing
+- Clear browser cache and cookies
+- Refresh the page
+- Check browser localStorage
+
+### Performance Issues
+- For large tables, consider batch processing
+- Use database indexes appropriately
+- Schedule masking during off-peak hours
 
 ---
 
-**Document Version**: v1.1
+## Support
+
+For additional support, please contact your system administrator or refer to the technical documentation.
+
+---
+
+**Document Version**: v2.0.0
 **Last Updated**: 2026-03-04

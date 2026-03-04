@@ -4,28 +4,28 @@
       <a-space>
         <a-input-search
           v-model:value="search.keyword"
-          placeholder="Search task name"
+          :placeholder="t('common.search')"
           style="width: 240px"
           @search="loadData"
           allow-clear
         />
         <a-select
           v-model:value="search.status"
-          placeholder="Status"
+          :placeholder="t('common.status')"
           style="width: 140px"
           allow-clear
           @change="loadData"
         >
-          <a-select-option value="DRAFT">Draft</a-select-option>
-          <a-select-option value="READY">Ready</a-select-option>
-          <a-select-option value="RUNNING">Running</a-select-option>
-          <a-select-option value="PAUSED">Paused</a-select-option>
+          <a-select-option value="DRAFT">{{ t('masking.statusDraft') }}</a-select-option>
+          <a-select-option value="READY">{{ t('masking.statusReady') }}</a-select-option>
+          <a-select-option value="RUNNING">{{ t('masking.statusRunning') }}</a-select-option>
+          <a-select-option value="PAUSED">{{ t('masking.statusPaused') }}</a-select-option>
         </a-select>
       </a-space>
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          New Task
+          {{ t('masking.createTask') }}
         </a-button>
       </a-space>
     </div>
@@ -39,6 +39,11 @@
       row-key="id"
     >
       <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'maskingMode'">
+          <a-tag :color="getModeColor(record.maskingMode)">
+            {{ getModeText(record.maskingMode) }}
+          </a-tag>
+        </template>
         <template v-if="column.key === 'status'">
           <a-tag :color="getStatusColor(record.status)">
             {{ getStatusText(record.status) }}
@@ -51,28 +56,28 @@
           <span v-else class="text-gray-400">-</span>
         </template>
         <template v-if="column.key === 'scheduleType'">
-          {{ record.scheduleType === 'CRON' ? 'Scheduled' : 'Manual' }}
+          {{ record.scheduleType === 'CRON' ? t('masking.scheduleCron') : t('masking.scheduleManual') }}
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="goToDetail(record)">
-              Configure
+              {{ t('common.edit') }}
             </a-button>
             <a-popconfirm
               v-if="record.status !== 'RUNNING'"
-              title="Are you sure you want to execute this task?"
+              :title="t('messages.executeConfirm')"
               @confirm="executeTask(record)"
             >
               <a-button type="primary" size="small">
-                Execute
+                {{ t('masking.execute') }}
               </a-button>
             </a-popconfirm>
             <a-button type="link" size="small" @click="showEditModal(record)">
-              Edit
+              {{ t('common.edit') }}
             </a-button>
-            <a-popconfirm title="Are you sure you want to delete this task?" @confirm="deleteTask(record.id)">
+            <a-popconfirm :title="t('messages.deleteConfirm')" @confirm="deleteTask(record.id)">
               <a-button type="link" size="small" danger>
-                Delete
+                {{ t('common.delete') }}
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -82,12 +87,12 @@
 
     <!-- Create/Edit Modal -->
     <a-modal
-      :title="isEdit ? 'Edit Task' : 'New Task'"
+      :title="isEdit ? t('masking.editTask') : t('masking.createTask')"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
       @cancel="handleModalCancel"
-      width="600px"
+      width="650px"
     >
       <a-form
         ref="formRef"
@@ -95,33 +100,60 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="Task Name" name="taskName" :rules="[{ required: true, message: 'Please enter' }]">
-          <a-input v-model:value="formState.taskName" placeholder="Please enter" />
+        <a-form-item :label="t('masking.taskName')" name="taskName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="formState.taskName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Data Source" name="datasourceId" :rules="[{ required: true, message: 'Please select' }]">
-          <a-select v-model:value="formState.datasourceId" placeholder="Please select" show-search>
+        <a-form-item label="Data Source" name="datasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="formState.datasourceId" :placeholder="t('common.pleaseSelect')" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="Source Schema" name="sourceSchema">
+
+        <!-- Masking Mode Selection -->
+        <a-form-item :label="t('masking.maskingMode')" name="maskingMode" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="formState.maskingMode" :placeholder="t('common.pleaseSelect')">
+            <a-select-option value="STATIC">
+              <div>
+                <span style="font-weight: 500">{{ t('masking.modeStatic') }}</span>
+                <span style="color: #999; margin-left: 8px; font-size: 12px">{{ t('masking.modeStaticDesc') }}</span>
+              </div>
+            </a-select-option>
+            <a-select-option value="GENERALIZE">
+              <div>
+                <span style="font-weight: 500">{{ t('masking.modeGeneralize') }}</span>
+                <span style="color: #999; margin-left: 8px; font-size: 12px">{{ t('masking.modeGeneralizeDesc') }}</span>
+              </div>
+            </a-select-option>
+          </a-select>
+          <div style="margin-top: 8px; color: #666; font-size: 12px">
+            <template v-if="formState.maskingMode === 'STATIC'">
+              <SafetyOutlined style="color: #1890ff" /> {{ t('masking.modeStaticDesc') }}
+            </template>
+            <template v-else-if="formState.maskingMode === 'GENERALIZE'">
+              <LineChartOutlined style="color: #52c41a" /> {{ t('masking.modeGeneralizeDesc') }}
+            </template>
+          </div>
+        </a-form-item>
+
+        <a-form-item :label="t('masking.sourceSchema')" name="sourceSchema">
           <a-input v-model:value="formState.sourceSchema" placeholder="public" />
         </a-form-item>
-        <a-form-item label="Target Schema" name="targetSchema">
+        <a-form-item :label="t('masking.targetSchema')" name="targetSchema">
           <a-input v-model:value="formState.targetSchema" placeholder="public" />
         </a-form-item>
-        <a-form-item label="Schedule Type" name="scheduleType">
+        <a-form-item :label="t('masking.scheduleType')" name="scheduleType">
           <a-select v-model:value="formState.scheduleType">
-            <a-select-option value="MANUAL">Manual</a-select-option>
-            <a-select-option value="CRON">Scheduled</a-select-option>
+            <a-select-option value="MANUAL">{{ t('masking.scheduleManual') }}</a-select-option>
+            <a-select-option value="CRON">{{ t('masking.scheduleCron') }}</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item v-if="formState.scheduleType === 'CRON'" label="Cron Expression" name="cronExpression">
+        <a-form-item v-if="formState.scheduleType === 'CRON'" :label="t('masking.cronExpression')" name="cronExpression">
           <a-input v-model:value="formState.cronExpression" placeholder="0 0 2 * * ?" />
         </a-form-item>
-        <a-form-item label="Description" name="description">
-          <a-textarea v-model:value="formState.description" :rows="3" placeholder="Please enter" />
+        <a-form-item :label="t('common.description')" name="description">
+          <a-textarea v-model:value="formState.description" :rows="3" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
       </a-form>
     </a-modal>
@@ -129,12 +161,14 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { message } from 'ant-design-vue'
-import { PlusOutlined } from '@ant-design/icons-vue'
+import { useI18n } from 'vue-i18n'
+import { PlusOutlined, SafetyOutlined, LineChartOutlined } from '@ant-design/icons-vue'
 import request from '@/utils/request'
 
+const { t } = useI18n()
 const router = useRouter()
 
 const loading = ref(false)
@@ -160,6 +194,7 @@ const formState = reactive({
   id: undefined as number | undefined,
   taskName: '',
   datasourceId: undefined as number | undefined,
+  maskingMode: 'STATIC',
   sourceSchema: '',
   targetSchema: '',
   scheduleType: 'MANUAL',
@@ -167,14 +202,15 @@ const formState = reactive({
   description: ''
 })
 
-const columns = [
-  { title: 'Task Name', dataIndex: 'taskName', key: 'taskName' },
-  { title: 'Status', key: 'status', width: 100 },
-  { title: 'Last Execution', key: 'lastExecution', width: 120 },
-  { title: 'Schedule Type', key: 'scheduleType', width: 100 },
-  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt' },
-  { title: 'Actions', key: 'actions', width: 280, fixed: 'right' as const }
-]
+const columns = computed(() => [
+  { title: t('masking.taskName'), dataIndex: 'taskName', key: 'taskName' },
+  { title: t('masking.maskingMode'), key: 'maskingMode', width: 120 },
+  { title: t('common.status'), key: 'status', width: 100 },
+  { title: t('masking.executionHistory'), key: 'lastExecution', width: 120 },
+  { title: t('masking.scheduleType'), key: 'scheduleType', width: 100 },
+  { title: t('common.createdAt'), dataIndex: 'createdAt', key: 'createdAt' },
+  { title: t('common.actions'), key: 'actions', width: 280, fixed: 'right' as const }
+])
 
 async function loadDatasources() {
   try {
@@ -231,6 +267,7 @@ function showCreateModal() {
     id: undefined,
     taskName: '',
     datasourceId: undefined,
+    maskingMode: 'STATIC',
     sourceSchema: '',
     targetSchema: '',
     scheduleType: 'MANUAL',
@@ -246,6 +283,7 @@ function showEditModal(record: any) {
     id: record.id,
     taskName: record.taskName,
     datasourceId: record.datasourceId,
+    maskingMode: record.maskingMode || 'STATIC',
     sourceSchema: record.sourceSchema,
     targetSchema: record.targetSchema,
     scheduleType: record.scheduleType,
@@ -262,10 +300,10 @@ async function handleModalOk() {
 
     if (isEdit.value) {
       await request.put(`/masking/tasks/${formState.id}`, formState)
-      message.success('Updated successfully')
+      message.success(t('messages.updateSuccess'))
     } else {
       await request.post('/masking/tasks', formState)
-      message.success('Created successfully')
+      message.success(t('messages.createSuccess'))
     }
 
     modalVisible.value = false
@@ -286,7 +324,7 @@ function goToDetail(record: any) {
 async function executeTask(record: any) {
   try {
     await request.post(`/masking/tasks/${record.id}/execute`)
-    message.success('Task submitted for execution')
+    message.success(t('messages.executeSuccess'))
     loadData()
   } catch (error) {
     //
@@ -296,7 +334,7 @@ async function executeTask(record: any) {
 async function deleteTask(id: number) {
   try {
     await request.delete(`/masking/tasks/${id}`)
-    message.success('Deleted successfully')
+    message.success(t('messages.deleteSuccess'))
     loadData()
   } catch (error) {
     //
@@ -316,15 +354,33 @@ function getStatusColor(status: string): string {
 }
 
 function getStatusText(status: string): string {
-  const texts: Record<string, string> = {
-    DRAFT: 'Draft',
-    READY: 'Ready',
-    RUNNING: 'Running',
-    PAUSED: 'Paused',
-    SUCCESS: 'Success',
-    FAILED: 'Failed'
+  const { locale } = useI18n()
+  const texts: Record<string, Record<string, string>> = {
+    DRAFT: { en: 'Draft', zh: '草稿' },
+    READY: { en: 'Ready', zh: '就绪' },
+    RUNNING: { en: 'Running', zh: '运行中' },
+    PAUSED: { en: 'Paused', zh: '已暂停' },
+    SUCCESS: { en: 'Success', zh: '成功' },
+    FAILED: { en: 'Failed', zh: '失败' }
   }
-  return texts[status] || status
+  return texts[status]?.[locale.value] || status
+}
+
+function getModeColor(mode: string): string {
+  const colors: Record<string, string> = {
+    STATIC: 'blue',
+    GENERALIZE: 'green'
+  }
+  return colors[mode] || 'default'
+}
+
+function getModeText(mode: string): string {
+  const { locale } = useI18n()
+  const texts: Record<string, Record<string, string>> = {
+    STATIC: { en: 'Static', zh: '静态' },
+    GENERALIZE: { en: 'Generalize', zh: '泛化' }
+  }
+  return texts[mode]?.[locale.value] || mode || 'Static'
 }
 
 function getExecutionStatusColor(status: string): string {
@@ -338,13 +394,14 @@ function getExecutionStatusColor(status: string): string {
 }
 
 function getExecutionStatusText(status: string): string {
-  const texts: Record<string, string> = {
-    SUCCESS: 'Success',
-    FAILED: 'Failed',
-    RUNNING: 'Running',
-    PENDING: 'Pending'
+  const { locale } = useI18n()
+  const texts: Record<string, Record<string, string>> = {
+    SUCCESS: { en: 'Success', zh: '成功' },
+    FAILED: { en: 'Failed', zh: '失败' },
+    RUNNING: { en: 'Running', zh: '运行中' },
+    PENDING: { en: 'Pending', zh: '待执行' }
   }
-  return texts[status] || status
+  return texts[status]?.[locale.value] || status
 }
 
 onMounted(() => {

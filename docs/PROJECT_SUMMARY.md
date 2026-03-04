@@ -27,9 +27,14 @@ This project developed a complete enterprise-grade data management platform base
 - ✅ **Data Masking Module**
   - Masking task management
   - Table and field configuration
-  - 10 pre-built masking algorithms
+  - 30+ PostgreSQL Anon masking algorithms
   - HashData Lightning + Anon extension integration
   - Task execution and history
+  - **Multi-mode masking support**:
+    - Static Masking: Create masked data copy
+    - Dynamic Masking: Role-based query masking
+    - Anonymization: Permanent data modification
+    - Generalization: Convert to ranges for analytics
 
 - ✅ **Data Lineage Module**
   - Lineage graph generation
@@ -82,6 +87,7 @@ This project developed a complete enterprise-grade data management platform base
 - ✅ Axios request wrapper
 - ✅ Route permission guard
 - ✅ Token auto-refresh
+- ✅ **Internationalization (i18n)**: English/Chinese support with language switcher
 
 ### 4. Deployment and Documentation
 

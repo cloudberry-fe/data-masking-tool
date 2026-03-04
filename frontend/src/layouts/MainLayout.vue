@@ -44,6 +44,23 @@
           </a-button>
         </div>
         <div class="header-right">
+          <!-- Language Switcher -->
+          <a-dropdown class="lang-switcher">
+            <a-button type="text">
+              <GlobalOutlined />
+              <span class="lang-text">{{ currentLangName }}</span>
+            </a-button>
+            <template #overlay>
+              <a-menu @click="handleLocaleChange">
+                <a-menu-item v-for="locale in locales" :key="locale.code" :class="{ 'ant-dropdown-menu-item-selected': locale.code === currentLocale }">
+                  <span class="lang-flag">{{ locale.flag }}</span>
+                  <span>{{ locale.name }}</span>
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
+
+          <!-- User Dropdown -->
           <a-dropdown>
             <a class="user-dropdown">
               <UserOutlined />
@@ -54,7 +71,7 @@
               <a-menu>
                 <a-menu-item key="logout" @click="handleLogout">
                   <LogoutOutlined />
-                  Logout
+                  {{ t('common.logout') }}
                 </a-menu-item>
               </a-menu>
             </template>
@@ -72,10 +89,13 @@
 import { ref, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import {
   HomeOutlined,
   DatabaseOutlined,
   SafetyOutlined,
+  EyeOutlined,
+  WarningOutlined,
   BranchesOutlined,
   SwapOutlined,
   SettingOutlined,
@@ -83,10 +103,13 @@ import {
   DownOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
-  MenuUnfoldOutlined
+  MenuUnfoldOutlined,
+  GlobalOutlined
 } from '@ant-design/icons-vue'
 import { useUserStore } from '@/stores/user'
+import { setLocale, LOCALES } from '@/locales'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
@@ -95,23 +118,44 @@ const collapsed = ref(false)
 const selectedKeys = ref<string[]>([])
 const openKeys = ref<string[]>([])
 
-const menuItems = [
-  { path: '/dashboard', title: 'Dashboard', icon: HomeOutlined },
-  { path: '/datasources', title: 'Data Sources', icon: DatabaseOutlined },
-  { path: '/masking', title: 'Data Masking', icon: SafetyOutlined },
-  { path: '/lineage', title: 'Lineage Analysis', icon: BranchesOutlined },
-  { path: '/sync', title: 'Data Sync', icon: SwapOutlined },
+// Locales
+const locales = LOCALES
+const currentLocale = computed(() => {
+  const { locale } = useI18n()
+  return locale.value
+})
+const currentLangName = computed(() => {
+  const lang = locales.find(l => l.code === currentLocale.value)
+  return lang ? `${lang.flag} ${lang.name}` : 'Language'
+})
+
+// Menu items with i18n
+const menuItems = computed(() => [
+  { path: '/dashboard', title: t('menu.dashboard'), icon: HomeOutlined },
+  { path: '/datasources', title: t('menu.datasources'), icon: DatabaseOutlined },
+  {
+    path: '/masking',
+    title: t('menu.masking'),
+    icon: SafetyOutlined,
+    children: [
+      { path: '/masking', title: t('menu.staticMasking') },
+      { path: '/dynamic-masking', title: t('menu.dynamicMasking') },
+      { path: '/anonymization', title: t('menu.anonymization') }
+    ]
+  },
+  { path: '/lineage', title: t('menu.lineage'), icon: BranchesOutlined },
+  { path: '/sync', title: t('menu.sync'), icon: SwapOutlined },
   {
     path: '/system',
-    title: 'System',
+    title: t('menu.system'),
     icon: SettingOutlined,
     children: [
-      { path: '/system/users', title: 'Users' },
-      { path: '/system/roles', title: 'Roles' },
-      { path: '/system/audit', title: 'Audit Logs' }
+      { path: '/system/users', title: t('menu.users') },
+      { path: '/system/roles', title: t('menu.roles') },
+      { path: '/system/audit', title: t('menu.auditLogs') }
     ]
   }
-]
+])
 
 function navigateTo(path: string) {
   router.push(path)
@@ -119,8 +163,14 @@ function navigateTo(path: string) {
 
 function handleLogout() {
   userStore.logout()
-  message.success('Logged out successfully')
+  message.success(t('messages.saveSuccess'))
   router.push('/login')
+}
+
+function handleLocaleChange(e: any) {
+  const localeCode = e.key
+  setLocale(localeCode)
+  message.success(localeCode === 'zh' ? '已切换到中文' : 'Switched to English')
 }
 </script>
 
@@ -150,11 +200,29 @@ function handleLogout() {
   border-bottom: 1px solid #f0f0f0;
 }
 
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .header-right .user-dropdown {
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.lang-switcher {
+  cursor: pointer;
+}
+
+.lang-text {
+  margin-left: 4px;
+}
+
+.lang-flag {
+  margin-right: 8px;
 }
 
 .content {

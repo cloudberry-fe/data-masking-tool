@@ -5,11 +5,12 @@ A comprehensive data management platform featuring data masking, lineage analysi
 ## Features
 
 - **Data Source Management**: Support for HashData Lightning (MPP), PostgreSQL, MySQL, Oracle, Dameng and more
-- **Data Masking**: High-performance masking engine based on HashData Lightning + Anon extension
+- **Data Masking**: High-performance masking engine based on HashData Lightning + Anon extension with 72 built-in algorithms
 - **Data Lineage**: Visual data lineage analysis with graph visualization
 - **Data Sync**: Efficient data synchronization and migration tools
 - **User & Permission**: Complete RBAC (Role-Based Access Control) system
-- **Audit Log**: Comprehensive operation audit trail
+- **Audit Log**: Comprehensive operation audit trail with detailed execution records
+- **SQL Generation**: Automatic SQL generation for masking tasks with preview capability
 
 ## Tech Stack
 
@@ -109,20 +110,51 @@ data-masking-tool/
 
 ## Masking Algorithms
 
-The system includes 10 pre-built masking algorithms:
+The system includes 72 pre-built masking algorithms across 8 categories:
 
-| Algorithm | Description | Use Case |
-|-----------|-------------|----------|
-| MASK | Partial masking with wildcard | Phone, ID card |
-| HASH | SHA-256 one-way hash | Unique identifiers |
-| REPLACE | Fixed value replacement | Sensitive fields |
-| NULL | Set to NULL | Unneeded fields |
-| ROUND | Numeric rounding | Amount, age |
-| OFFSET | Numeric offset | Age, date |
-| SHUFFLE | Column shuffling | Randomization |
-| SUBSTITUTION | Dictionary substitution | Realistic fake data |
-| PRESERVATION | Format-preserving | Names, addresses |
-| ENCRYPT | Reversible encryption | Secure storage |
+| Category | Algorithms | Description |
+|----------|------------|-------------|
+| FAKE | fake_address, fake_city, fake_country, fake_email, etc. | Generate realistic fake data |
+| RANDOM | random_int, random_string, random_date, etc. | Generate random values |
+| PARTIAL | partial, partial_email, partial_phone | Partial masking with wildcards |
+| PSEUDO | pseudo_first_name, pseudo_last_name | Deterministic pseudonym substitution |
+| HASH | digest, hash | One-way hash transformation |
+| NOISE | add_noise, add_noise_numeric | Add random noise |
+| GENERALIZE | generalize_date, generalize_number | Convert exact values to ranges |
+| CONDITIONAL | MASK, REPLACE, NULL, ROUND, OFFSET | Conditional masking operators |
+
+### Key Features
+
+- **SQL Generation**: Automatically generate SQL statements for masking tasks
+- **Execution Details**: View detailed execution logs including duration and record counts
+- **Audit Logging**: Complete operation trail with success/failure tracking
+- **Type-aware Masking**: Automatic detection of numeric types for replacement values
+
+## API Reference
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/auth/login` | POST | User login |
+| `/api/v1/auth/current-user` | GET | Get current user info |
+| `/api/v1/datasources` | GET/POST | List/create data sources |
+| `/api/v1/datasources/{id}/test-connection` | POST | Test data source connection |
+| `/api/v1/datasources/{id}/tables` | GET | Get table list |
+| `/api/v1/masking/tasks` | GET/POST | List/create masking tasks |
+| `/api/v1/masking/tasks/{id}/execute` | POST | Execute masking task |
+| `/api/v1/masking/tasks/{id}/generate-sql` | POST | Generate masking SQL |
+| `/api/v1/masking/executions/{id}/logs` | GET | Get execution details |
+| `/api/v1/masking/algorithms` | GET | Get algorithm list |
+| `/api/v1/audit/logs` | GET | Get audit logs |
+
+## Testing
+
+Run the comprehensive test suite:
+
+```bash
+cd backend
+source venv/bin/activate
+python ../test_all_features.py
+```
 
 ## Contributing
 

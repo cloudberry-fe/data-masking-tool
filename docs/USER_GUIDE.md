@@ -126,17 +126,18 @@ Click **"Configure"** in the task list to enter task details:
 
 ### 3. Masking Algorithm Configuration
 
-Each field can be configured with these masking algorithms:
+The system provides 72 built-in masking algorithms across 8 categories:
 
-| Algorithm | Description | Use Case |
-|-----------|-------------|----------|
-| Mask | Keep partial info, replace rest with * | Phone, ID card, Bank card |
-| Hash | SHA256 irreversible hash | Unique identifiers |
-| Replace | Fixed value replacement | Sensitive fields |
-| Null | Set to NULL | Unneeded fields |
-| Round | Numeric range rounding | Amount, Age |
-| Offset | Numeric fixed offset | Age, Date |
-| Format Preserving | Format-preserving randomization | Names, Addresses |
+| Category | Algorithms | Description |
+|----------|------------|-------------|
+| FAKE | fake_address, fake_city, fake_email, etc. | Generate realistic fake data |
+| RANDOM | random_int, random_string, random_date | Generate random values |
+| PARTIAL | partial, partial_email, partial_phone | Partial masking with wildcards |
+| PSEUDO | pseudo_first_name, pseudo_last_name | Deterministic pseudonym substitution |
+| HASH | digest, hash | One-way hash transformation |
+| NOISE | add_noise, add_noise_numeric | Add random noise |
+| GENERALIZE | generalize_date, generalize_number | Convert exact values to ranges |
+| CONDITIONAL | MASK, REPLACE, NULL, ROUND, OFFSET | Conditional masking operators |
 
 ### 4. Execute Masking Tasks
 
@@ -144,7 +145,33 @@ Each field can be configured with these masking algorithms:
 2. Confirm and the task starts executing
 3. View execution status and results in **"Execution History"**
 
-### 5. Using HashData Anon Extension
+### 5. View Execution Details
+
+After task execution, you can view detailed information:
+
+1. Click on an execution record to view details
+2. Information includes:
+   - Execution number
+   - Status (SUCCESS/FAILED/RUNNING)
+   - Start time and end time
+   - Duration (formatted as "Xm Ys")
+   - Total records processed
+   - Success/failed record counts
+   - Error messages (if any)
+
+### 6. Generate SQL
+
+You can generate SQL statements for a masking task:
+
+1. Click **"Generate SQL"** in the task detail page
+2. View the generated SQL statements
+3. SQL includes:
+   - DROP TABLE (if target exists)
+   - CREATE TABLE (copy structure)
+   - INSERT (copy data)
+   - UPDATE (apply masking)
+
+### 7. Using HashData Anon Extension
 
 The system integrates HashData Lightning's Anon extension for high-performance masking:
 
@@ -154,6 +181,15 @@ SELECT anon.partial('13812345678', 3, 4);  -- 138****5678
 SELECT anon.digest('secret', 'sha256');      -- Hash masking
 SELECT anon.random_first_name();               -- Random first name
 ```
+
+### 8. Important Notes for Numeric Fields
+
+When using the **REPLACE** algorithm on numeric fields:
+
+- Ensure the replacement value fits within the field's precision
+- For example, `numeric(7,2)` has max value of 99999.99
+- Use values like `99.99` instead of `123123`
+- The system automatically detects numeric types and formats values correctly
 
 ---
 
@@ -254,6 +290,13 @@ Click "Details" to view complete log information, including:
 - IP address
 - User-Agent
 
+#### Execution Audit
+When executing masking tasks, audit logs record:
+- Task name and execution number
+- Success/failure status
+- Number of records processed
+- Error details if failed
+
 ---
 
 ## Masking Algorithms
@@ -293,10 +336,14 @@ Replaces original data with a fixed value.
 **Parameters**:
 - `replacement`: Replacement value
 
+**Note**: For numeric fields, ensure the value fits within the field's precision.
+
 **Example**:
 ```
 Original value: Zhang San
 Replacement value: ***
+
+For numeric(7,2): Use 99.99 instead of 123123
 ```
 
 ### 4. Null Algorithm (NULL)
@@ -333,6 +380,16 @@ offset=5: 30 → 35
 ### 7. Format-Preserving Algorithm (PRESERVATION)
 
 Randomizes while preserving data format, such as replacing names with random names, addresses with random addresses.
+
+### 8. Fake Data Generation (FAKE)
+
+Generates realistic fake data:
+- `anon.fake_email()` - Random email
+- `anon.fake_first_name()` - Random first name
+- `anon.fake_last_name()` - Random last name
+- `anon.fake_address()` - Random address
+- `anon.fake_city()` - Random city
+- `anon.fake_country()` - Random country
 
 ---
 
@@ -401,6 +458,12 @@ A: Configure Cron expression:
 - `0 0 2 * * 0` Every Sunday at 2 AM
 - `0 0 2 1 * ?` Every 1st of month at 2 AM
 
+### Q: Why does REPLACE algorithm fail on numeric fields?
+A: Ensure the replacement value fits within the field's numeric precision:
+- Check the field definition (e.g., `numeric(7,2)` means max ~99999.99)
+- Use a smaller value that fits the precision
+- The system auto-detects numeric types but values must be valid
+
 ---
 
 ## Appendix
@@ -417,5 +480,5 @@ Second Minute Hour Day Month Weekday
 
 ---
 
-**Document Version**: v1.0
-**Last Updated**: 2026-03-02
+**Document Version**: v1.1
+**Last Updated**: 2026-03-04

@@ -442,6 +442,23 @@ CREATE EXTENSION IF NOT EXISTS anon CASCADE;
 - Verify `VITE_API_BASE_URL` is configured correctly
 - Check if backend service is running
 
+### 6. Masking Task Returns Zero Records
+**Problem**: Task executes but shows 0 records processed
+
+**Solution**:
+- Check if source table exists and has data
+- Verify the schema name is correct (source_schema/target_schema)
+- Check if table is enabled in the configuration
+- Review backend logs for SQL execution warnings
+
+### 7. Numeric Field Overflow Error
+**Problem**: `numeric field overflow` when using REPLACE algorithm
+
+**Solution**:
+- Ensure replacement value fits within the field's numeric precision
+- For `numeric(7,2)`, max value is 99999.99
+- Use appropriate values like `99.99` instead of `123123`
+
 ---
 
 ## Appendix
@@ -467,3 +484,18 @@ CREATE EXTENSION IF NOT EXISTS anon CASCADE;
 ├── docs/            # Documentation
 └── logs/            # Log directory
 ```
+
+### API Endpoints Reference
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/v1/auth/login` | POST | User login |
+| `/api/v1/auth/current-user` | GET | Get current user info |
+| `/api/v1/datasources` | GET/POST | List/create data sources |
+| `/api/v1/datasources/{id}/test-connection` | POST | Test connection |
+| `/api/v1/datasources/{id}/tables` | GET | Get table list |
+| `/api/v1/masking/tasks` | GET/POST | List/create tasks |
+| `/api/v1/masking/tasks/{id}/execute` | POST | Execute task |
+| `/api/v1/masking/tasks/{id}/generate-sql` | POST | Generate SQL |
+| `/api/v1/masking/executions/{id}/logs` | GET | Get execution details |
+| `/api/v1/masking/algorithms` | GET | Get algorithm list |
+| `/api/v1/audit/logs` | GET | Get audit logs |

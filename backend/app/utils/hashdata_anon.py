@@ -837,7 +837,14 @@ class HashDataAnonManager:
 
         elif algorithm == "REPLACE":
             replacement = params.get("replacement", "***")
-            return f"'{replacement}'"
+            # 尝试判断是否为数值类型
+            try:
+                # 如果能转换为浮点数，则不加引号
+                float(replacement)
+                return str(replacement)
+            except (ValueError, TypeError):
+                # 字符串类型需要加引号
+                return f"'{replacement}'"
 
         elif algorithm == "NULL":
             return "NULL"
@@ -987,10 +994,15 @@ class HashDataAnonManager:
 
             # 执行 SQL（分条执行）
             for statement in sql.split(";"):
-                statement = statement.strip()
-                if statement and not statement.startswith("--"):
+                # 移除注释行，提取实际SQL
+                lines = statement.strip().split('\n')
+                actual_sql_lines = [line.strip() for line in lines if line.strip() and not line.strip().startswith("--")]
+                actual_sql = ' '.join(actual_sql_lines).strip()
+
+                if actual_sql:
                     try:
-                        cursor.execute(statement)
+                        logger.debug(f"执行SQL: {actual_sql[:100]}...")
+                        cursor.execute(actual_sql)
                     except Exception as e:
                         logger.warning(f"SQL执行警告: {e}")
                         conn.rollback()

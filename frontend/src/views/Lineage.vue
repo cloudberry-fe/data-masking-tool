@@ -1,16 +1,16 @@
 <template>
   <div class="lineage-page">
     <a-card>
-      <template #title>Lineage Analysis</template>
+      <template #title>{{ t('lineage.title') }}</template>
       <template #extra>
         <a-space>
-          <a-select v-model:value="selectedDatasource" style="width: 240px" placeholder="Select data source">
+          <a-select v-model:value="selectedDatasource" style="width: 240px" :placeholder="t('lineage.selectDatasource')">
             <a-select-option v-for="ds in datasources" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
           </a-select>
           <a-button type="primary" @click="loadLineage" :loading="loading">
-            Analyze
+            {{ t('lineage.analyze') }}
           </a-button>
         </a-space>
       </template>
@@ -23,7 +23,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import request from '@/utils/request'
+
+const { t, locale } = useI18n()
 
 const graphContainer = ref<HTMLElement>()
 const selectedDatasource = ref<number>()
@@ -42,7 +45,7 @@ async function loadDatasources() {
 
 async function loadLineage() {
   if (!selectedDatasource.value) {
-    message.warning('Please select a data source')
+    message.warning(t('lineage.selectDatasourceHint'))
     return
   }
 
@@ -127,7 +130,7 @@ async function renderGraph(data: any) {
     graph.render()
   } catch (error) {
     console.error('Failed to render lineage graph:', error)
-    message.info('Lineage graph requires @antv/g6 dependency')
+    message.info(t('lineage.g6Required'))
   }
 }
 

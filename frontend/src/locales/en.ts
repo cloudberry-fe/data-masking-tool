@@ -191,13 +191,18 @@ export default {
   lineage: {
     title: 'Lineage Analysis',
     selectDatasource: 'Select Datasource',
+    selectDatasourceHint: 'Please select a data source',
     selectTable: 'Select Table',
     upstream: 'Upstream',
     downstream: 'Downstream',
+    analyze: 'Analyze',
+    g6Required: 'Lineage graph requires @antv/g6 dependency',
   },
   sync: {
     title: 'Data Sync',
     createTask: 'New Sync Task',
+    editTask: 'Edit Sync Task',
+    taskName: 'Task Name',
     sourceDatasource: 'Source Datasource',
     targetDatasource: 'Target Datasource',
     sourceTable: 'Source Table',

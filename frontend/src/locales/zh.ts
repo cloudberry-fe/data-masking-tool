@@ -191,13 +191,18 @@ export default {
   lineage: {
     title: '血缘分析',
     selectDatasource: '选择数据源',
+    selectDatasourceHint: '请选择数据源',
     selectTable: '选择表',
     upstream: '上游',
     downstream: '下游',
+    analyze: '分析',
+    g6Required: '血缘图谱需要 @antv/g6 依赖',
   },
   sync: {
     title: '翻数工具',
     createTask: '新建任务',
+    editTask: '编辑任务',
+    taskName: '任务名称',
     sourceDatasource: '源数据源',
     targetDatasource: '目标数据源',
     sourceTable: '源表',

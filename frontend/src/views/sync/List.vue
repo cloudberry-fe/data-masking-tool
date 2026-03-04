@@ -4,7 +4,7 @@
       <a-space>
         <a-input-search
           v-model:value="search.keyword"
-          placeholder="Search task name"
+          :placeholder="t('common.search')"
           style="width: 240px"
           @search="loadData"
           allow-clear
@@ -13,7 +13,7 @@
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          New Task
+          {{ t('sync.createTask') }}
         </a-button>
       </a-space>
     </div>
@@ -28,7 +28,7 @@
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'syncMode'">
-          {{ record.syncMode === 'FULL' ? 'Full Sync' : 'Incremental Sync' }}
+          {{ record.syncMode === 'FULL' ? t('sync.fullSync') : t('sync.incrementalSync') }}
         </template>
         <template v-if="column.key === 'status'">
           <a-tag :color="getStatusColor(record.status)">
@@ -37,17 +37,17 @@
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
-            <a-popconfirm title="Are you sure you want to execute this task?" @confirm="executeTask(record)">
+            <a-popconfirm :title="t('messages.executeConfirm')" @confirm="executeTask(record)">
               <a-button type="primary" size="small">
-                Execute
+                {{ t('masking.execute') }}
               </a-button>
             </a-popconfirm>
             <a-button type="link" size="small" @click="showEditModal(record)">
-              Edit
+              {{ t('common.edit') }}
             </a-button>
-            <a-popconfirm title="Are you sure you want to delete this task?" @confirm="deleteTask(record.id)">
+            <a-popconfirm :title="t('messages.deleteConfirm')" @confirm="deleteTask(record.id)">
               <a-button type="link" size="small" danger>
-                Delete
+                {{ t('common.delete') }}
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -57,7 +57,7 @@
 
     <!-- Create/Edit Modal -->
     <a-modal
-      :title="isEdit ? 'Edit Task' : 'New Task'"
+      :title="isEdit ? t('sync.editTask') : t('sync.createTask')"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
@@ -70,36 +70,36 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="Task Name" name="taskName" :rules="[{ required: true }]">
-          <a-input v-model:value="formState.taskName" placeholder="Please enter" />
+        <a-form-item :label="t('sync.taskName')" name="taskName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="formState.taskName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Source Data Source" name="sourceDatasourceId" :rules="[{ required: true }]">
-          <a-select v-model:value="formState.sourceDatasourceId" placeholder="Please select" show-search>
+        <a-form-item :label="t('sync.sourceDatasource')" name="sourceDatasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="formState.sourceDatasourceId" :placeholder="t('common.pleaseSelect')" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="Target Data Source" name="targetDatasourceId" :rules="[{ required: true }]">
-          <a-select v-model:value="formState.targetDatasourceId" placeholder="Please select" show-search>
+        <a-form-item :label="t('sync.targetDatasource')" name="targetDatasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="formState.targetDatasourceId" :placeholder="t('common.pleaseSelect')" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="Sync Mode" name="syncMode">
+        <a-form-item :label="t('sync.syncMode')" name="syncMode">
           <a-select v-model:value="formState.syncMode">
-            <a-select-option value="FULL">Full Sync</a-select-option>
-            <a-select-option value="INCREMENTAL">Incremental Sync</a-select-option>
+            <a-select-option value="FULL">{{ t('sync.fullSync') }}</a-select-option>
+            <a-select-option value="INCREMENTAL">{{ t('sync.incrementalSync') }}</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="Schedule Type" name="scheduleType">
+        <a-form-item :label="t('masking.scheduleType')" name="scheduleType">
           <a-select v-model:value="formState.scheduleType">
-            <a-select-option value="MANUAL">Manual</a-select-option>
-            <a-select-option value="CRON">Scheduled</a-select-option>
+            <a-select-option value="MANUAL">{{ t('masking.scheduleManual') }}</a-select-option>
+            <a-select-option value="CRON">{{ t('masking.scheduleCron') }}</a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item v-if="formState.scheduleType === 'CRON'" label="Cron Expression" name="cronExpression">
+        <a-form-item v-if="formState.scheduleType === 'CRON'" :label="t('masking.cronExpression')" name="cronExpression">
           <a-input v-model:value="formState.cronExpression" placeholder="0 0 2 * * ?" />
         </a-form-item>
       </a-form>
@@ -108,10 +108,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import request from '@/utils/request'
+
+const { t, locale } = useI18n()
 
 const loading = ref(false)
 const modalVisible = ref(false)
@@ -141,14 +144,14 @@ const formState = reactive({
   cronExpression: ''
 })
 
-const columns = [
-  { title: 'Task Name', dataIndex: 'taskName', key: 'taskName' },
-  { title: 'Sync Mode', key: 'syncMode', width: 120 },
-  { title: 'Schedule Type', dataIndex: 'scheduleType', key: 'scheduleType', width: 100 },
-  { title: 'Status', key: 'status', width: 100 },
-  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt' },
-  { title: 'Actions', key: 'actions', width: 220, fixed: 'right' as const }
-]
+const columns = computed(() => [
+  { title: t('sync.taskName'), dataIndex: 'taskName', key: 'taskName' },
+  { title: t('sync.syncMode'), key: 'syncMode', width: 120 },
+  { title: t('masking.scheduleType'), dataIndex: 'scheduleType', key: 'scheduleType', width: 100 },
+  { title: t('common.status'), key: 'status', width: 100 },
+  { title: t('common.createdAt'), dataIndex: 'createdAt', key: 'createdAt' },
+  { title: t('common.actions'), key: 'actions', width: 220, fixed: 'right' as const }
+])
 
 async function loadDatasources() {
   try {
@@ -217,10 +220,10 @@ async function handleModalOk() {
 
     if (isEdit.value) {
       await request.put(`/sync/tasks/${formState.id}`, formState)
-      message.success('Updated successfully')
+      message.success(t('messages.updateSuccess'))
     } else {
       await request.post('/sync/tasks', formState)
-      message.success('Created successfully')
+      message.success(t('messages.createSuccess'))
     }
 
     modalVisible.value = false
@@ -237,7 +240,7 @@ function handleModalCancel() {
 async function executeTask(record: any) {
   try {
     await request.post(`/sync/tasks/${record.id}/execute`)
-    message.success('Task submitted for execution')
+    message.success(t('messages.executeSuccess'))
   } catch (error) {
     //
   }
@@ -246,7 +249,7 @@ async function executeTask(record: any) {
 async function deleteTask(id: number) {
   try {
     await request.delete(`/sync/tasks/${id}`)
-    message.success('Deleted successfully')
+    message.success(t('messages.deleteSuccess'))
     loadData()
   } catch (error) {
     //
@@ -265,14 +268,14 @@ function getStatusColor(status: string): string {
 }
 
 function getStatusText(status: string): string {
-  const texts: Record<string, string> = {
-    DRAFT: 'Draft',
-    READY: 'Ready',
-    RUNNING: 'Running',
-    SUCCESS: 'Success',
-    FAILED: 'Failed'
+  const texts: Record<string, Record<string, string>> = {
+    DRAFT: { en: 'Draft', zh: '草稿' },
+    READY: { en: 'Ready', zh: '就绪' },
+    RUNNING: { en: 'Running', zh: '运行中' },
+    SUCCESS: { en: 'Success', zh: '成功' },
+    FAILED: { en: 'Failed', zh: '失败' }
   }
-  return texts[status] || status
+  return texts[status]?.[locale.value] || status
 }
 
 onMounted(() => {

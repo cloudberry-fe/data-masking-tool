@@ -1,11 +1,32 @@
 """
 数据脱敏相关数据模型
 
-脱敏模式说明:
-- STATIC: 静态脱敏 - 创建脱敏后的数据副本，原数据不变
-- DYNAMIC: 动态脱敏 - 使用视图和RLS，查询时动态脱敏
-- ANONYMIZE: 原地匿名化 - 永久修改原表数据
-- GENERALIZE: 泛化 - 将精确值转换为范围值
+## 脱敏模式说明
+
+### 1. 静态脱敏 (STATIC) - 使用 MaskingTask
+- 创建脱敏后的数据副本，原数据不变
+- 适用场景：开发/测试环境、数据导出
+- 配置：源表 → 目标表，字段脱敏规则
+
+### 2. 动态脱敏 (DYNAMIC) - 使用 DynamicMaskingRule
+- 基于数据库角色的查询时脱敏
+- 适用场景：生产环境权限控制
+- 配置：表 + 字段脱敏规则 + 被脱敏角色 + 豁免角色
+
+### 3. 原地匿名化 (ANONYMIZE) - 使用 AnonymizationTask
+- 永久修改原表数据，不可逆操作
+- 适用场景：GDPR合规、数据销毁
+- 配置：表 + 字段脱敏规则（无目标表）
+
+### 4. 泛化脱敏 (GENERALIZE) - 使用 MaskingTask
+- 将精确值转换为范围值
+- 适用场景：数据分析、统计报表
+- 配置：源表 → 目标表，字段泛化规则
+
+注意：
+- MaskingTask 用于 STATIC 和 GENERALIZE 模式
+- DynamicMaskingRule 用于 DYNAMIC 模式
+- AnonymizationTask 用于 ANONYMIZE 模式
 """
 from sqlalchemy import (
     Column,
@@ -25,7 +46,7 @@ from app.core.database import Base
 
 
 class MaskingTask(Base):
-    """脱敏任务表"""
+    """静态脱敏/泛化脱敏任务表"""
 
     __tablename__ = "masking_task"
 
@@ -37,12 +58,8 @@ class MaskingTask(Base):
     source_schema = Column(String(128), comment="源Schema")
     target_schema = Column(String(128), comment="目标Schema")
 
-    # 脱敏模式: STATIC(静态脱敏), DYNAMIC(动态脱敏), ANONYMIZE(原地匿名化), GENERALIZE(泛化)
+    # 脱敏模式: STATIC(静态脱敏) 或 GENERALIZE(泛化)
     masking_mode = Column(String(32), default="STATIC", comment="脱敏模式")
-
-    # 动态脱敏相关配置
-    masked_role = Column(String(128), comment="动态脱敏-被脱敏的数据库角色")
-    exempted_roles = Column(JSON, comment="动态脱敏-豁免角色列表")
 
     task_type = Column(String(32), default="TABLE", comment="任务类型")
     schedule_type = Column(String(32), default="MANUAL", comment="调度类型：MANUAL/CRON")
@@ -69,10 +86,6 @@ class MaskingTable(Base):
     table_name = Column(String(128), nullable=False, comment="表名")
     source_table = Column(String(128), comment="源表名")
     target_table = Column(String(128), comment="目标表名")
-
-    # 动态脱敏时的视图名
-    masked_view_name = Column(String(128), comment="动态脱敏-脱敏视图名")
-
     order_no = Column(Integer, default=0, comment="执行顺序")
     enabled = Column(Boolean, default=True, comment="是否启用")
 

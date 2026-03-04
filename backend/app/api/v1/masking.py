@@ -383,6 +383,31 @@ def get_algorithm_categories():
     return Response(data=get_algorithm_categories())
 
 
+@router.get("/masking-modes")
+def get_masking_modes():
+    """
+    获取脱敏模式列表
+
+    返回所有支持的脱敏模式及其说明：
+    - STATIC: 静态脱敏 - 创建脱敏后的数据副本
+    - DYNAMIC: 动态脱敏 - 基于角色的查询时脱敏
+    - ANONYMIZE: 原地匿名化 - 永久修改原表数据
+    - GENERALIZE: 泛化脱敏 - 将精确值转换为范围
+    """
+    from app.utils.hashdata_anon import MASKING_MODE_DESCRIPTIONS
+
+    modes = []
+    for code, info in MASKING_MODE_DESCRIPTIONS.items():
+        modes.append({
+            "code": code,
+            "name": info["name"],
+            "description": info["description"],
+            "features": info["features"]
+        })
+
+    return Response(data=modes)
+
+
 @router.get("/algorithms/{algorithm_code}")
 def get_algorithm_detail(
     algorithm_code: str,
@@ -459,14 +484,35 @@ def generate_task_sql(
     task_id: int,
     db: DBSession,
     current_user: CurrentUser,
+    mode: str = "STATIC",
+    masked_role: Optional[str] = None,
+    exempted_roles: Optional[str] = None,
 ):
-    """生成脱敏任务的SQL语句"""
+    """
+    生成脱敏任务的SQL语句
+
+    Args:
+        task_id: 任务ID
+        mode: 脱敏模式
+            - STATIC: 静态脱敏（默认）- 创建脱敏后的数据副本
+            - DYNAMIC: 动态脱敏 - 基于角色的查询时脱敏
+            - ANONYMIZE: 原地匿名化 - 永久修改原表数据
+            - GENERALIZE: 泛化脱敏 - 将精确值转换为范围
+        masked_role: 动态脱敏时被脱敏的数据库角色
+        exempted_roles: 动态脱敏时豁免的角色（逗号分隔）
+    """
     from app.utils.hashdata_anon import (
         HashDataAnonManager,
         MaskingTableConfig,
         MaskingColumnConfig,
+        MASKING_MODE_DESCRIPTIONS,
     )
     from app.services.datasource_service import DataSourceService
+
+    # 验证模式
+    mode = mode.upper()
+    if mode not in MASKING_MODE_DESCRIPTIONS:
+        raise HTTPException(status_code=400, detail=f"不支持的脱敏模式: {mode}")
 
     task = MaskingService.get_task_with_details(db, task_id)
     if not task:
@@ -488,6 +534,13 @@ def generate_task_sql(
     source_schema = task.source_schema or "public"
     target_schema = task.target_schema or "public"
 
+    # 处理动态脱敏参数
+    kwargs = {}
+    if mode == "DYNAMIC":
+        kwargs["masked_role"] = masked_role or "masked"
+        if exempted_roles:
+            kwargs["exempted_roles"] = [r.strip() for r in exempted_roles.split(",")]
+
     for table_config in task.tables:
         if not table_config.enabled or not table_config.columns:
             continue
@@ -508,11 +561,13 @@ def generate_task_sql(
             columns=masking_columns,
         )
 
-        # 生成SQL
-        sql = anon_manager.generate_masking_sql(
+        # 根据模式生成SQL
+        sql = anon_manager.generate_masking_sql_by_mode(
             masking_table_config,
+            mode=mode,
             source_schema=source_schema,
             target_schema=target_schema,
+            **kwargs
         )
         all_sql_parts.append(sql)
 
@@ -521,11 +576,17 @@ def generate_task_sql(
 
     combined_sql = "\n\n".join(all_sql_parts)
 
+    # 模式说明
+    mode_info = MASKING_MODE_DESCRIPTIONS.get(mode, {})
+
     return Response(data={
         "sql": combined_sql,
         "tableCount": len(all_sql_parts),
         "sourceSchema": source_schema,
         "targetSchema": target_schema,
+        "mode": mode,
+        "modeName": mode_info.get("name", mode),
+        "modeDescription": mode_info.get("description", ""),
     })
 
 

@@ -1,5 +1,7 @@
 # Cloudberry Data Management Console
 
+[English](README.md) | [中文](README_CN.md)
+
 A comprehensive data management platform featuring data masking, lineage analysis, data synchronization, and data source management. Built with HashData Lightning and PostgreSQL Anon extension for high-performance data masking.
 
 ## Features
@@ -103,10 +105,17 @@ data-masking-tool/
 
 ## Documentation
 
+### English
 - [System Requirements](docs/SYSTEM_REQUIREMENTS.md) - Detailed system requirements and architecture
 - [Deployment Guide](docs/DEPLOYMENT.md) - Step-by-step deployment instructions
 - [User Guide](docs/USER_GUIDE.md) - Complete user manual
 - [Project Summary](docs/PROJECT_SUMMARY.md) - Project overview and features
+
+### 中文文档
+- [系统需求](docs/系统需求文档.md) - 详细的系统需求和架构说明
+- [部署文档](docs/部署文档.md) - 分步部署指南
+- [使用说明](docs/使用说明.md) - 完整的用户手册
+- [项目总结](docs/项目总结.md) - 项目概述和功能介绍
 
 ## Masking Algorithms
 

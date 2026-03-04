@@ -789,16 +789,59 @@ class HashDataAnonManager:
         # 构建 ANON 函数调用
         func_name = algorithm  # 如 anon.fake_email, anon.partial 等
 
+        # 判断是否需要字段作为第一个参数
+        # 生成类函数不需要字段参数（fake_*, dummy_*）
+        # 转换类函数需要字段参数（partial, hash, digest, pseudo_* 等）
+        needs_column_param = self._function_needs_column_param(algorithm)
+
         # 处理参数
         param_values = []
+
+        # 如果需要字段作为第一个参数，先添加字段
+        if needs_column_param:
+            # 对于 pseudo_* 函数，seed 参数可以是字段或其他值
+            if algorithm.startswith("anon.pseudo_"):
+                seed = params.get("seed", column)
+                salt = params.get("salt", "")
+                if salt:
+                    return f"{func_name}('{seed}', '{salt}')"
+                else:
+                    return f"{func_name}('{seed}')"
+            # 对于 partial 函数，字段是第一个参数
+            elif algorithm == "anon.partial":
+                prefix_len = params.get("prefix_len", 2)
+                mask_char = params.get("mask_char", "*")
+                suffix_len = params.get("suffix_len", 2)
+                return f"{func_name}({column}::text, {prefix_len}, '{mask_char}', {suffix_len})"
+            # 对于 partial_email，字段是第一个参数
+            elif algorithm == "anon.partial_email":
+                return f"{func_name}({column}::text)"
+            # 对于 hash 函数，字段是第一个参数
+            elif algorithm == "anon.hash":
+                return f"{func_name}({column}::text)"
+            # 对于 digest 函数，需要字段和盐值
+            elif algorithm == "anon.digest":
+                salt = params.get("salt", "")
+                algo = params.get("algorithm", "sha256")
+                return f"{func_name}({column}::text, '{salt}', '{algo}')"
+            else:
+                # 其他需要字段参数的函数
+                param_values.append(f"{column}::text")
+
+        # 处理其他参数
         if algo_def:
             for param_def in algo_def.params:
                 param_name = param_def.name
+                # 跳过已经处理的参数
+                if param_name in ["seed", "salt", "prefix_len", "mask_char", "suffix_len", "algorithm"]:
+                    continue
                 if param_name in params:
                     value = params[param_name]
                     # 根据类型格式化值
                     if param_def.type in ["int", "bigint", "float"]:
                         param_values.append(str(value))
+                    elif param_def.type == "date":
+                        param_values.append(f"'{value}'::date")
                     elif param_def.type == "text":
                         param_values.append(f"'{value}'")
                     elif param_def.type == "array":
@@ -820,6 +863,39 @@ class HashDataAnonManager:
             return f"{func_name}({', '.join(param_values)})"
         else:
             return f"{func_name}()"
+
+    def _function_needs_column_param(self, algorithm: str) -> bool:
+        """
+        判断函数是否需要字段作为第一个参数
+
+        生成类函数（fake_*, dummy_*, random_id 等）不需要字段参数
+        转换类函数（partial, hash, digest 等）需要字段参数
+        """
+        algo_lower = algorithm.lower()
+
+        # 生成类函数 - 不需要字段参数
+        if algo_lower.startswith("anon.fake_"):
+            return False
+        if algo_lower.startswith("anon.dummy_"):
+            return False
+        if algo_lower in ["anon.random_id", "anon.random_id_int", "anon.random_zip"]:
+            return False
+        if algo_lower == "anon.random_string":
+            return False
+
+        # 转换类函数 - 需要字段参数
+        if algo_lower in ["anon.partial", "anon.partial_email", "anon.hash", "anon.digest"]:
+            return True
+        if algo_lower.startswith("anon.pseudo_"):
+            return True  # 但 pseudo 函数的 seed 参数单独处理
+
+        # 随机类函数带范围参数的，不需要字段
+        if algo_lower in ["anon.random_int_between", "anon.random_bigint_between",
+                          "anon.random_date_between", "anon.random_in", "anon.random_hash"]:
+            return False
+
+        # 默认情况
+        return False
 
     def _generate_simple_masking_sql(self, column: str, algorithm: str, params: Dict[str, Any]) -> str:
         """生成简化版脱敏 SQL"""

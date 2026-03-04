@@ -61,7 +61,7 @@
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="goToDetail(record)">
-              {{ t('common.edit') }}
+              {{ t('masking.tableConfig') }}
             </a-button>
             <a-popconfirm
               v-if="record.status !== 'RUNNING'"

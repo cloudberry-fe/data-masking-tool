@@ -4,7 +4,7 @@
       <a-space>
         <a-select
           v-model:value="search.datasourceId"
-          placeholder="Select Datasource"
+          :placeholder="t('common.pleaseSelect')"
           style="width: 200px"
           allow-clear
           @change="loadData"
@@ -15,35 +15,35 @@
         </a-select>
         <a-select
           v-model:value="search.status"
-          placeholder="Status"
+          :placeholder="t('common.status')"
           style="width: 140px"
           allow-clear
           @change="loadData"
         >
-          <a-select-option value="DRAFT">Draft</a-select-option>
-          <a-select-option value="EXECUTED">Executed</a-select-option>
+          <a-select-option value="DRAFT">{{ t('masking.statusDraft') }}</a-select-option>
+          <a-select-option value="EXECUTED">{{ t('anonymization.executed') }}</a-select-option>
         </a-select>
       </a-space>
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          New Task
+          {{ t('anonymization.createTask') }}
         </a-button>
       </a-space>
     </div>
 
     <a-alert
-      message="In-Place Anonymization"
+      :message="t('anonymization.title')"
       type="warning"
       show-icon
       style="margin-bottom: 16px"
     >
       <template #description>
-        <strong>Warning:</strong> Anonymization permanently modifies the original table data. This operation is irreversible.
+        <strong>{{ t('anonymization.warning') }}</strong>
         <ul style="margin: 8px 0 0 0; padding-left: 20px;">
-          <li>Original data will be permanently replaced with anonymized values</li>
-          <li>Enable backup option to create a backup table before anonymization</li>
-          <li>Suitable for GDPR compliance and data destruction scenarios</li>
+          <li>{{ t('anonymization.warningDesc1') }}</li>
+          <li>{{ t('anonymization.warningDesc2') }}</li>
+          <li>{{ t('anonymization.warningDesc3') }}</li>
         </ul>
       </template>
     </a-alert>
@@ -64,34 +64,34 @@
         </template>
         <template v-if="column.key === 'backup'">
           <a-tag v-if="record.backupBeforeAnonymize" color="blue">
-            {{ record.backupTableName || 'Enabled' }}
+            {{ record.backupTableName || t('common.yes') }}
           </a-tag>
-          <span v-else class="text-gray-400">No backup</span>
+          <span v-else class="text-gray-400">{{ t('anonymization.noBackup') }}</span>
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="showDetailModal(record)">
-              Configure
+              {{ t('anonymization.configure') }}
             </a-button>
             <a-button type="link" size="small" @click="showPreviewSql(record)">
-              Preview SQL
+              {{ t('dynamicMasking.previewSQL') }}
             </a-button>
             <a-popconfirm
               v-if="record.status === 'DRAFT'"
-              title="Execute anonymization? This will permanently modify the original table data!"
+              :title="t('anonymization.executeConfirm')"
               @confirm="executeTask(record)"
             >
               <a-button type="primary" size="small" danger>
-                Execute
+                {{ t('masking.execute') }}
               </a-button>
             </a-popconfirm>
             <a-popconfirm
               v-if="record.status === 'DRAFT'"
-              title="Are you sure you want to delete this task?"
+              :title="t('messages.deleteConfirm')"
               @confirm="deleteTask(record.id)"
             >
               <a-button type="link" size="small" danger>
-                Delete
+                {{ t('common.delete') }}
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -101,15 +101,15 @@
 
     <!-- Create Modal -->
     <a-modal
-      title="New Anonymization Task"
+      :title="t('anonymization.createTask')"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleCreateOk"
       width="600px"
     >
       <a-alert
-        message="Anonymization is irreversible!"
-        description="Please make sure to enable backup option for important data."
+        :message="t('anonymization.warningTitle')"
+        :description="t('anonymization.warningHint')"
         type="warning"
         show-icon
         style="margin-bottom: 16px"
@@ -120,11 +120,11 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="Task Name" name="taskName" :rules="[{ required: true, message: 'Please enter' }]">
-          <a-input v-model:value="formState.taskName" placeholder="e.g., Customer data anonymization" />
+        <a-form-item :label="t('masking.taskName')" name="taskName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="formState.taskName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Data Source" name="datasourceId" :rules="[{ required: true, message: 'Please select' }]">
-          <a-select v-model:value="formState.datasourceId" placeholder="Please select" show-search>
+        <a-form-item :label="t('datasource.title')" name="datasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="formState.datasourceId" :placeholder="t('common.pleaseSelect')" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
@@ -133,24 +133,24 @@
         <a-form-item label="Schema" name="schemaName">
           <a-input v-model:value="formState.schemaName" placeholder="public" />
         </a-form-item>
-        <a-form-item label="Table Name" name="tableName" :rules="[{ required: true, message: 'Please enter' }]">
-          <a-input v-model:value="formState.tableName" placeholder="Table to anonymize" />
+        <a-form-item :label="t('masking.tableName')" name="tableName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="formState.tableName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Backup Before" name="backupBeforeAnonymize">
+        <a-form-item :label="t('anonymization.backupEnabled')" name="backupBeforeAnonymize">
           <a-switch v-model:checked="formState.backupBeforeAnonymize" />
           <span style="margin-left: 8px; color: #666">
-            Create backup table before anonymization (recommended)
+            {{ t('anonymization.backupHint') }}
           </span>
         </a-form-item>
-        <a-form-item label="Description" name="description">
-          <a-textarea v-model:value="formState.description" :rows="2" placeholder="Task description" />
+        <a-form-item :label="t('common.description')" name="description">
+          <a-textarea v-model:value="formState.description" :rows="2" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- Detail/Column Config Modal -->
     <a-modal
-      :title="`Configure: ${currentTask?.taskName || ''}`"
+      :title="`${t('anonymization.configure')}: ${currentTask?.taskName || ''}`"
       v-model:open="detailModalVisible"
       width="800px"
       :footer="null"
@@ -158,19 +158,19 @@
       <div v-if="currentTask">
         <a-descriptions :column="2" bordered size="small" style="margin-bottom: 16px">
           <a-descriptions-item label="Table">{{ currentTask.schemaName }}.{{ currentTask.tableName }}</a-descriptions-item>
-          <a-descriptions-item label="Status">
+          <a-descriptions-item :label="t('common.status')">
             <a-tag :color="getStatusColor(currentTask.status)">{{ getStatusText(currentTask.status) }}</a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="Backup">
-            <a-tag v-if="currentTask.backupBeforeAnonymize" color="blue">{{ currentTask.backupTableName || 'Enabled' }}</a-tag>
-            <span v-else>No backup</span>
+          <a-descriptions-item :label="t('anonymization.backupTable')">
+            <a-tag v-if="currentTask.backupBeforeAnonymize" color="blue">{{ currentTask.backupTableName || t('common.yes') }}</a-tag>
+            <span v-else>{{ t('anonymization.noBackup') }}</span>
           </a-descriptions-item>
-          <a-descriptions-item label="Last Executed">
+          <a-descriptions-item :label="t('anonymization.lastExecuted')">
             {{ currentTask.lastExecutedAt || '-' }}
           </a-descriptions-item>
         </a-descriptions>
 
-        <a-divider>Column Anonymization Rules</a-divider>
+        <a-divider>{{ t('anonymization.columnRules') }}</a-divider>
 
         <a-table
           :columns="columnColumns"
@@ -181,8 +181,8 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
-              <a-popconfirm title="Delete this rule?" @confirm="deleteColumnRule(record.id)">
-                <a-button type="link" size="small" danger>Delete</a-button>
+              <a-popconfirm :title="t('messages.deleteConfirm')" @confirm="deleteColumnRule(record.id)">
+                <a-button type="link" size="small" danger>{{ t('common.delete') }}</a-button>
               </a-popconfirm>
             </template>
           </template>
@@ -190,7 +190,7 @@
 
         <div v-if="currentTask.status === 'DRAFT'" style="margin-top: 16px">
           <a-button type="dashed" block @click="showAddColumnModal">
-            <PlusOutlined /> Add Column Rule
+            <PlusOutlined /> {{ t('masking.addColumn') }}
           </a-button>
         </div>
       </div>
@@ -198,7 +198,7 @@
 
     <!-- Add Column Rule Modal -->
     <a-modal
-      title="Add Column Rule"
+      :title="t('anonymization.addColumnRule')"
       v-model:open="addColumnModalVisible"
       :confirm-loading="addColumnLoading"
       @ok="handleAddColumnOk"
@@ -209,17 +209,17 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="Column Name" name="columnName" :rules="[{ required: true, message: 'Please enter' }]">
-          <a-input v-model:value="addColumnForm.columnName" placeholder="Column to anonymize" />
+        <a-form-item :label="t('masking.columnName')" name="columnName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="addColumnForm.columnName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Algorithm" name="maskingAlgorithm" :rules="[{ required: true, message: 'Please select' }]">
-          <a-select v-model:value="addColumnForm.maskingAlgorithm" placeholder="Select algorithm" show-search>
+        <a-form-item :label="t('masking.algorithm')" name="maskingAlgorithm" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="addColumnForm.maskingAlgorithm" :placeholder="t('common.pleaseSelect')" show-search>
             <a-select-option v-for="algo in algorithms" :key="algo.code" :value="algo.code">
               {{ algo.name }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="Parameters" name="algorithmParams">
+        <a-form-item :label="t('masking.algorithmParams')" name="algorithmParams">
           <a-textarea
             v-model:value="addColumnForm.algorithmParamsStr"
             placeholder='{"show_first": 2, "show_last": 2}'
@@ -231,7 +231,7 @@
 
     <!-- Preview SQL Modal -->
     <a-modal
-      title="Generated SQL Preview"
+      :title="t('dynamicMasking.previewSQL')"
       v-model:open="previewSqlModalVisible"
       width="700px"
       :footer="null"
@@ -244,7 +244,7 @@
       />
       <a-descriptions :column="2" size="small" style="margin-bottom: 16px">
         <a-descriptions-item label="Table">{{ previewData.tableName }}</a-descriptions-item>
-        <a-descriptions-item label="Backup Table">{{ previewData.backupTable || 'None' }}</a-descriptions-item>
+        <a-descriptions-item :label="t('anonymization.backupTable')">{{ previewData.backupTable || t('anonymization.noBackup') }}</a-descriptions-item>
       </a-descriptions>
       <pre class="sql-preview">{{ previewSql }}</pre>
     </a-modal>
@@ -252,10 +252,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import request from '@/utils/request'
+
+const { t, locale } = useI18n()
 
 const loading = ref(false)
 const modalVisible = ref(false)
@@ -302,21 +305,21 @@ const addColumnForm = reactive({
   algorithmParamsStr: ''
 })
 
-const columns = [
-  { title: 'Task Name', dataIndex: 'taskName', key: 'taskName' },
-  { title: 'Table', key: 'table', customRender: ({ record }: any) => `${record.schemaName}.${record.tableName}` },
-  { title: 'Backup', key: 'backup', width: 150 },
-  { title: 'Status', key: 'status', width: 100 },
-  { title: 'Last Executed', dataIndex: 'lastExecutedAt', key: 'lastExecutedAt' },
-  { title: 'Actions', key: 'actions', width: 280, fixed: 'right' as const }
-]
+const columns = computed(() => [
+  { title: t('masking.taskName'), dataIndex: 'taskName', key: 'taskName' },
+  { title: t('masking.tableName'), key: 'table', customRender: ({ record }: any) => `${record.schemaName}.${record.tableName}` },
+  { title: t('anonymization.backupTable'), key: 'backup', width: 150 },
+  { title: t('common.status'), key: 'status', width: 100 },
+  { title: t('anonymization.lastExecuted'), dataIndex: 'lastExecutedAt', key: 'lastExecutedAt' },
+  { title: t('common.actions'), key: 'actions', width: 280, fixed: 'right' as const }
+])
 
-const columnColumns = [
-  { title: 'Column', dataIndex: 'columnName', key: 'columnName' },
-  { title: 'Algorithm', dataIndex: 'maskingAlgorithm', key: 'maskingAlgorithm' },
-  { title: 'Parameters', dataIndex: 'algorithmParams', key: 'algorithmParams' },
-  { title: 'Actions', key: 'actions', width: 100 }
-]
+const columnColumns = computed(() => [
+  { title: t('masking.columnName'), dataIndex: 'columnName', key: 'columnName' },
+  { title: t('masking.algorithm'), dataIndex: 'maskingAlgorithm', key: 'maskingAlgorithm' },
+  { title: t('masking.algorithmParams'), dataIndex: 'algorithmParams', key: 'algorithmParams' },
+  { title: t('common.actions'), key: 'actions', width: 100 }
+])
 
 async function loadDatasources() {
   try {
@@ -378,7 +381,7 @@ async function handleCreateOk() {
     modalLoading.value = true
 
     await request.post('/anonymization/tasks', formState)
-    message.success('Task created successfully')
+    message.success(t('messages.createSuccess'))
     modalVisible.value = false
     loadData()
   } finally {
@@ -389,7 +392,7 @@ async function handleCreateOk() {
 async function showDetailModal(record: any) {
   currentTask.value = record
   detailModalVisible.value = true
-  columnRules.value = [] // TODO: Load column rules
+  columnRules.value = []
 }
 
 function showAddColumnModal() {
@@ -411,7 +414,7 @@ async function handleAddColumnOk() {
       try {
         params = JSON.parse(addColumnForm.algorithmParamsStr)
       } catch {
-        message.error('Invalid JSON for parameters')
+        message.error(t('dynamicMasking.invalidJson'))
         return
       }
     }
@@ -421,7 +424,7 @@ async function handleAddColumnOk() {
       masking_algorithm: addColumnForm.maskingAlgorithm,
       algorithm_params: params
     })
-    message.success('Column rule added successfully')
+    message.success(t('messages.createSuccess'))
     addColumnModalVisible.value = false
   } finally {
     addColumnLoading.value = false
@@ -429,13 +432,13 @@ async function handleAddColumnOk() {
 }
 
 async function deleteColumnRule(id: number) {
-  message.success('Column rule deleted')
+  message.success(t('messages.deleteSuccess'))
 }
 
 async function executeTask(record: any) {
   try {
     const result = await request.post(`/anonymization/tasks/${record.id}/execute`)
-    message.success(result.message || 'Anonymization completed')
+    message.success(result.message || t('messages.executeSuccess'))
     loadData()
   } catch (error) {
     //
@@ -456,7 +459,7 @@ async function showPreviewSql(record: any) {
 async function deleteTask(id: number) {
   try {
     await request.delete(`/anonymization/tasks/${id}`)
-    message.success('Task deleted successfully')
+    message.success(t('messages.deleteSuccess'))
     loadData()
   } catch (error) {
     //
@@ -472,11 +475,11 @@ function getStatusColor(status: string): string {
 }
 
 function getStatusText(status: string): string {
-  const texts: Record<string, string> = {
-    DRAFT: 'Draft',
-    EXECUTED: 'Executed'
+  const texts: Record<string, Record<string, string>> = {
+    DRAFT: { en: 'Draft', zh: '草稿' },
+    EXECUTED: { en: 'Executed', zh: '已执行' }
   }
-  return texts[status] || status
+  return texts[status]?.[locale.value] || status
 }
 
 onMounted(() => {

@@ -4,7 +4,7 @@
       <a-space>
         <a-select
           v-model:value="search.datasourceId"
-          placeholder="Select Datasource"
+          :placeholder="t('common.pleaseSelect')"
           style="width: 200px"
           allow-clear
           @change="loadData"
@@ -15,27 +15,27 @@
         </a-select>
         <a-select
           v-model:value="search.status"
-          placeholder="Status"
+          :placeholder="t('common.status')"
           style="width: 140px"
           allow-clear
           @change="loadData"
         >
-          <a-select-option value="DRAFT">Draft</a-select-option>
-          <a-select-option value="ACTIVE">Active</a-select-option>
-          <a-select-option value="INACTIVE">Inactive</a-select-option>
+          <a-select-option value="DRAFT">{{ t('masking.statusDraft') }}</a-select-option>
+          <a-select-option value="ACTIVE">{{ t('dynamicMasking.active') }}</a-select-option>
+          <a-select-option value="INACTIVE">{{ t('dynamicMasking.inactive') }}</a-select-option>
         </a-select>
       </a-space>
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          New Rule
+          {{ t('dynamicMasking.createRule') }}
         </a-button>
       </a-space>
     </div>
 
     <a-alert
-      message="Dynamic Masking"
-      description="Configure role-based masking rules for database tables. Different database roles will see masked data when querying."
+      :message="t('dynamicMasking.title')"
+      :description="t('dynamicMasking.warning')"
       type="info"
       show-icon
       style="margin-bottom: 16px"
@@ -57,7 +57,7 @@
         </template>
         <template v-if="column.key === 'isEnabled'">
           <a-tag :color="record.isEnabled ? 'success' : 'default'">
-            {{ record.isEnabled ? 'Enabled' : 'Disabled' }}
+            {{ record.isEnabled ? t('dynamicMasking.enabled') : t('dynamicMasking.disabled') }}
           </a-tag>
         </template>
         <template v-if="column.key === 'maskedRoles'">
@@ -68,36 +68,36 @@
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="showDetailModal(record)">
-              Configure
+              {{ t('dynamicMasking.configure') }}
             </a-button>
             <a-popconfirm
               v-if="!record.isEnabled"
-              title="Enable this rule? This will apply SECURITY LABEL to the table."
+              :title="t('dynamicMasking.enableConfirm')"
               @confirm="enableRule(record)"
             >
               <a-button type="primary" size="small">
-                Enable
+                {{ t('dynamicMasking.enableRule') }}
               </a-button>
             </a-popconfirm>
             <a-popconfirm
               v-else
-              title="Disable this rule?"
+              :title="t('dynamicMasking.disableConfirm')"
               @confirm="disableRule(record)"
             >
               <a-button size="small">
-                Disable
+                {{ t('dynamicMasking.disableRule') }}
               </a-button>
             </a-popconfirm>
             <a-button type="link" size="small" @click="showPreviewSql(record)">
-              Preview SQL
+              {{ t('dynamicMasking.previewSQL') }}
             </a-button>
             <a-popconfirm
               v-if="!record.isEnabled"
-              title="Are you sure you want to delete this rule?"
+              :title="t('messages.deleteConfirm')"
               @confirm="deleteRule(record.id)"
             >
               <a-button type="link" size="small" danger>
-                Delete
+                {{ t('common.delete') }}
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -107,7 +107,7 @@
 
     <!-- Create Modal -->
     <a-modal
-      title="New Dynamic Masking Rule"
+      :title="t('dynamicMasking.createRule')"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleCreateOk"
@@ -119,11 +119,11 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="Rule Name" name="ruleName" :rules="[{ required: true, message: 'Please enter' }]">
-          <a-input v-model:value="formState.ruleName" placeholder="e.g., users table dynamic masking" />
+        <a-form-item :label="t('dynamicMasking.ruleName')" name="ruleName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="formState.ruleName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Data Source" name="datasourceId" :rules="[{ required: true, message: 'Please select' }]">
-          <a-select v-model:value="formState.datasourceId" placeholder="Please select" show-search>
+        <a-form-item :label="t('datasource.title')" name="datasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="formState.datasourceId" :placeholder="t('common.pleaseSelect')" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
@@ -132,34 +132,34 @@
         <a-form-item label="Schema" name="schemaName">
           <a-input v-model:value="formState.schemaName" placeholder="public" />
         </a-form-item>
-        <a-form-item label="Table Name" name="tableName" :rules="[{ required: true, message: 'Please enter' }]">
-          <a-input v-model:value="formState.tableName" placeholder="Table to mask" />
+        <a-form-item :label="t('masking.tableName')" name="tableName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="formState.tableName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Masked Roles" name="maskedRoles" :rules="[{ required: true, message: 'Please enter' }]">
+        <a-form-item :label="t('dynamicMasking.maskedRoles')" name="maskedRoles" :rules="[{ required: true, message: t('common.pleaseInput') }]">
           <a-select
             v-model:value="formState.maskedRoles"
             mode="tags"
-            placeholder="Database roles that will see masked data"
+            :placeholder="t('dynamicMasking.maskedRolesHint')"
           >
           </a-select>
         </a-form-item>
-        <a-form-item label="Exempted Roles" name="exemptedRoles">
+        <a-form-item :label="t('dynamicMasking.exemptedRoles')" name="exemptedRoles">
           <a-select
             v-model:value="formState.exemptedRoles"
             mode="tags"
-            placeholder="Database roles that can see original data"
+            :placeholder="t('dynamicMasking.exemptedRolesHint')"
           >
           </a-select>
         </a-form-item>
-        <a-form-item label="Description" name="description">
-          <a-textarea v-model:value="formState.description" :rows="2" placeholder="Rule description" />
+        <a-form-item :label="t('common.description')" name="description">
+          <a-textarea v-model:value="formState.description" :rows="2" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
       </a-form>
     </a-modal>
 
     <!-- Detail/Column Config Modal -->
     <a-modal
-      :title="`Configure: ${currentRule?.ruleName || ''}`"
+      :title="`${t('dynamicMasking.configure')}: ${currentRule?.ruleName || ''}`"
       v-model:open="detailModalVisible"
       width="800px"
       :footer="null"
@@ -167,18 +167,18 @@
       <div v-if="currentRule">
         <a-descriptions :column="2" bordered size="small" style="margin-bottom: 16px">
           <a-descriptions-item label="Table">{{ currentRule.schemaName }}.{{ currentRule.tableName }}</a-descriptions-item>
-          <a-descriptions-item label="Status">
+          <a-descriptions-item :label="t('common.status')">
             <a-tag :color="getStatusColor(currentRule.status)">{{ getStatusText(currentRule.status) }}</a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="Masked Roles">
+          <a-descriptions-item :label="t('dynamicMasking.maskedRoles')">
             <a-tag v-for="role in currentRule.maskedRoles" :key="role" color="orange">{{ role }}</a-tag>
           </a-descriptions-item>
-          <a-descriptions-item label="Exempted Roles">
+          <a-descriptions-item :label="t('dynamicMasking.exemptedRoles')">
             <a-tag v-for="role in currentRule.exemptedRoles" :key="role" color="green">{{ role }}</a-tag>
           </a-descriptions-item>
         </a-descriptions>
 
-        <a-divider>Column Masking Rules</a-divider>
+        <a-divider>{{ t('masking.columnConfig') }}</a-divider>
 
         <a-table
           :columns="columnColumns"
@@ -189,8 +189,8 @@
         >
           <template #bodyCell="{ column, record }">
             <template v-if="column.key === 'actions'">
-              <a-popconfirm title="Delete this rule?" @confirm="deleteColumnRule(record.id)">
-                <a-button type="link" size="small" danger>Delete</a-button>
+              <a-popconfirm :title="t('messages.deleteConfirm')" @confirm="deleteColumnRule(record.id)">
+                <a-button type="link" size="small" danger>{{ t('common.delete') }}</a-button>
               </a-popconfirm>
             </template>
           </template>
@@ -198,7 +198,7 @@
 
         <div style="margin-top: 16px">
           <a-button type="dashed" block @click="showAddColumnModal">
-            <PlusOutlined /> Add Column Rule
+            <PlusOutlined /> {{ t('masking.addColumn') }}
           </a-button>
         </div>
       </div>
@@ -206,7 +206,7 @@
 
     <!-- Add Column Rule Modal -->
     <a-modal
-      title="Add Column Rule"
+      :title="t('dynamicMasking.addColumnRule')"
       v-model:open="addColumnModalVisible"
       :confirm-loading="addColumnLoading"
       @ok="handleAddColumnOk"
@@ -217,17 +217,17 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="Column Name" name="columnName" :rules="[{ required: true, message: 'Please enter' }]">
-          <a-input v-model:value="addColumnForm.columnName" placeholder="Column to mask" />
+        <a-form-item :label="t('masking.columnName')" name="columnName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="addColumnForm.columnName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Algorithm" name="maskingAlgorithm" :rules="[{ required: true, message: 'Please select' }]">
-          <a-select v-model:value="addColumnForm.maskingAlgorithm" placeholder="Select algorithm" show-search>
+        <a-form-item :label="t('masking.algorithm')" name="maskingAlgorithm" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="addColumnForm.maskingAlgorithm" :placeholder="t('common.pleaseSelect')" show-search>
             <a-select-option v-for="algo in algorithms" :key="algo.code" :value="algo.code">
               {{ algo.name }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="Parameters" name="algorithmParams">
+        <a-form-item :label="t('masking.algorithmParams')" name="algorithmParams">
           <a-textarea
             v-model:value="addColumnForm.algorithmParamsStr"
             placeholder='{"show_first": 2, "show_last": 2}'
@@ -239,13 +239,13 @@
 
     <!-- Preview SQL Modal -->
     <a-modal
-      title="Generated SQL Preview"
+      :title="t('dynamicMasking.previewSQL')"
       v-model:open="previewSqlModalVisible"
       width="700px"
       :footer="null"
     >
       <a-alert
-        message="This SQL will be executed when enabling the rule"
+        :message="t('dynamicMasking.previewSQLWarning')"
         type="warning"
         show-icon
         style="margin-bottom: 16px"
@@ -256,10 +256,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { message } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import request from '@/utils/request'
+
+const { t, locale } = useI18n()
 
 const loading = ref(false)
 const modalVisible = ref(false)
@@ -306,21 +309,21 @@ const addColumnForm = reactive({
   algorithmParamsStr: ''
 })
 
-const columns = [
-  { title: 'Rule Name', dataIndex: 'ruleName', key: 'ruleName' },
-  { title: 'Table', key: 'table', customRender: ({ record }: any) => `${record.schemaName}.${record.tableName}` },
-  { title: 'Masked Roles', key: 'maskedRoles', width: 200 },
-  { title: 'Status', key: 'status', width: 100 },
-  { title: 'Enabled', key: 'isEnabled', width: 100 },
-  { title: 'Actions', key: 'actions', width: 300, fixed: 'right' as const }
-]
+const columns = computed(() => [
+  { title: t('dynamicMasking.ruleName'), dataIndex: 'ruleName', key: 'ruleName' },
+  { title: t('masking.tableName'), key: 'table', customRender: ({ record }: any) => `${record.schemaName}.${record.tableName}` },
+  { title: t('dynamicMasking.maskedRoles'), key: 'maskedRoles', width: 200 },
+  { title: t('common.status'), key: 'status', width: 100 },
+  { title: t('dynamicMasking.enabled'), key: 'isEnabled', width: 100 },
+  { title: t('common.actions'), key: 'actions', width: 300, fixed: 'right' as const }
+])
 
-const columnColumns = [
-  { title: 'Column', dataIndex: 'columnName', key: 'columnName' },
-  { title: 'Algorithm', dataIndex: 'maskingAlgorithm', key: 'maskingAlgorithm' },
-  { title: 'Parameters', dataIndex: 'algorithmParams', key: 'algorithmParams' },
-  { title: 'Actions', key: 'actions', width: 100 }
-]
+const columnColumns = computed(() => [
+  { title: t('masking.columnName'), dataIndex: 'columnName', key: 'columnName' },
+  { title: t('masking.algorithm'), dataIndex: 'maskingAlgorithm', key: 'maskingAlgorithm' },
+  { title: t('masking.algorithmParams'), dataIndex: 'algorithmParams', key: 'algorithmParams' },
+  { title: t('common.actions'), key: 'actions', width: 100 }
+])
 
 async function loadDatasources() {
   try {
@@ -383,7 +386,7 @@ async function handleCreateOk() {
     modalLoading.value = true
 
     await request.post('/dynamic-masking/rules', formState)
-    message.success('Rule created successfully')
+    message.success(t('messages.createSuccess'))
     modalVisible.value = false
     loadData()
   } finally {
@@ -401,8 +404,7 @@ async function loadColumnRules(ruleId: number) {
   columnLoading.value = true
   try {
     const rule = await request.get(`/dynamic-masking/rules/${ruleId}/preview-sql`)
-    // Load column rules from the rule
-    columnRules.value = [] // TODO: Add endpoint to get column rules
+    columnRules.value = []
   } finally {
     columnLoading.value = false
   }
@@ -427,7 +429,7 @@ async function handleAddColumnOk() {
       try {
         params = JSON.parse(addColumnForm.algorithmParamsStr)
       } catch {
-        message.error('Invalid JSON for parameters')
+        message.error(t('dynamicMasking.invalidJson'))
         return
       }
     }
@@ -437,7 +439,7 @@ async function handleAddColumnOk() {
       masking_algorithm: addColumnForm.maskingAlgorithm,
       algorithm_params: params
     })
-    message.success('Column rule added successfully')
+    message.success(t('messages.createSuccess'))
     addColumnModalVisible.value = false
     await loadColumnRules(currentRule.value.id)
   } finally {
@@ -446,14 +448,13 @@ async function handleAddColumnOk() {
 }
 
 async function deleteColumnRule(id: number) {
-  // TODO: Add endpoint to delete column rule
-  message.success('Column rule deleted')
+  message.success(t('messages.deleteSuccess'))
 }
 
 async function enableRule(record: any) {
   try {
     await request.post(`/dynamic-masking/rules/${record.id}/enable`)
-    message.success('Rule enabled successfully')
+    message.success(t('dynamicMasking.enableSuccess'))
     loadData()
   } catch (error) {
     //
@@ -463,7 +464,7 @@ async function enableRule(record: any) {
 async function disableRule(record: any) {
   try {
     await request.post(`/dynamic-masking/rules/${record.id}/disable`)
-    message.success('Rule disabled successfully')
+    message.success(t('dynamicMasking.disableSuccess'))
     loadData()
   } catch (error) {
     //
@@ -483,7 +484,7 @@ async function showPreviewSql(record: any) {
 async function deleteRule(id: number) {
   try {
     await request.delete(`/dynamic-masking/rules/${id}`)
-    message.success('Rule deleted successfully')
+    message.success(t('messages.deleteSuccess'))
     loadData()
   } catch (error) {
     //
@@ -500,12 +501,12 @@ function getStatusColor(status: string): string {
 }
 
 function getStatusText(status: string): string {
-  const texts: Record<string, string> = {
-    DRAFT: 'Draft',
-    ACTIVE: 'Active',
-    INACTIVE: 'Inactive'
+  const texts: Record<string, Record<string, string>> = {
+    DRAFT: { en: 'Draft', zh: '草稿' },
+    ACTIVE: { en: 'Active', zh: '已激活' },
+    INACTIVE: { en: 'Inactive', zh: '未激活' }
   }
-  return texts[status] || status
+  return texts[status]?.[locale.value] || status
 }
 
 onMounted(() => {

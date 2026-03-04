@@ -4,27 +4,27 @@
       <a-space>
         <a-input-search
           v-model:value="search.keyword"
-          placeholder="Search data source name"
+          :placeholder="t('common.search')"
           style="width: 240px"
           @search="loadData"
           allow-clear
         />
         <a-select
           v-model:value="search.datasourceType"
-          placeholder="Data source type"
+          :placeholder="t('datasource.datasourceType')"
           style="width: 160px"
           allow-clear
           @change="loadData"
         >
-          <a-select-option v-for="t in datasourceTypes" :key="t.value" :value="t.value">
-            {{ t.label }}
+          <a-select-option v-for="dt in datasourceTypes" :key="dt.value" :value="dt.value">
+            {{ dt.label }}
           </a-select-option>
         </a-select>
       </a-space>
       <a-space>
         <a-button type="primary" @click="showCreateModal">
           <PlusOutlined />
-          Add Data Source
+          {{ t('datasource.create') }}
         </a-button>
       </a-space>
     </div>
@@ -45,20 +45,20 @@
         </template>
         <template v-if="column.key === 'status'">
           <a-tag :color="record.status === 1 ? 'success' : 'default'">
-            {{ record.status === 1 ? 'Enabled' : 'Disabled' }}
+            {{ record.status === 1 ? t('common.yes') : t('common.no') }}
           </a-tag>
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="testConnection(record)">
-              Test Connection
+              {{ t('datasource.testConnection') }}
             </a-button>
             <a-button type="link" size="small" @click="showEditModal(record)">
-              Edit
+              {{ t('common.edit') }}
             </a-button>
-            <a-popconfirm title="Are you sure you want to delete this data source?" @confirm="deleteDatasource(record.id)">
+            <a-popconfirm :title="t('messages.deleteConfirm')" @confirm="deleteDatasource(record.id)">
               <a-button type="link" size="small" danger>
-                Delete
+                {{ t('common.delete') }}
               </a-button>
             </a-popconfirm>
           </a-space>
@@ -68,7 +68,7 @@
 
     <!-- Create/Edit Modal -->
     <a-modal
-      :title="isEdit ? 'Edit Data Source' : 'Add Data Source'"
+      :title="isEdit ? t('datasource.edit') : t('datasource.create')"
       v-model:open="modalVisible"
       :confirm-loading="modalLoading"
       @ok="handleModalOk"
@@ -81,32 +81,32 @@
         :label-col="{ span: 6 }"
         :wrapper-col="{ span: 16 }"
       >
-        <a-form-item label="Data Source Name" name="datasourceName" :rules="[{ required: true, message: 'Please enter' }]">
-          <a-input v-model:value="formState.datasourceName" placeholder="Please enter" />
+        <a-form-item :label="t('datasource.datasourceName')" name="datasourceName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
+          <a-input v-model:value="formState.datasourceName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Data Source Type" name="datasourceType" :rules="[{ required: true, message: 'Please select' }]">
-          <a-select v-model:value="formState.datasourceType" placeholder="Please select">
-            <a-select-option v-for="t in datasourceTypes" :key="t.value" :value="t.value">
-              {{ t.label }}
+        <a-form-item :label="t('datasource.datasourceType')" name="datasourceType" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+          <a-select v-model:value="formState.datasourceType" :placeholder="t('common.pleaseSelect')">
+            <a-select-option v-for="dt in datasourceTypes" :key="dt.value" :value="dt.value">
+              {{ dt.label }}
             </a-select-option>
           </a-select>
         </a-form-item>
-        <a-form-item label="Host" name="host" :rules="[{ required: true, message: 'Please enter' }]">
+        <a-form-item :label="t('datasource.host')" name="host" :rules="[{ required: true, message: t('common.pleaseInput') }]">
           <a-input v-model:value="formState.host" placeholder="localhost" />
         </a-form-item>
-        <a-form-item label="Port" name="port" :rules="[{ required: true, message: 'Please enter' }]">
+        <a-form-item :label="t('datasource.port')" name="port" :rules="[{ required: true, message: t('common.pleaseInput') }]">
           <a-input-number v-model:value="formState.port" :min="1" :max="65535" style="width: 100%" />
         </a-form-item>
-        <a-form-item label="Database Name" name="databaseName">
-          <a-input v-model:value="formState.databaseName" placeholder="Please enter" />
+        <a-form-item :label="t('datasource.database')" name="databaseName">
+          <a-input v-model:value="formState.databaseName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Username" name="username">
-          <a-input v-model:value="formState.username" placeholder="Please enter" />
+        <a-form-item :label="t('datasource.username')" name="username">
+          <a-input v-model:value="formState.username" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Password" name="password">
-          <a-input-password v-model:value="formState.password" placeholder="Please enter" />
+        <a-form-item :label="t('datasource.password')" name="password">
+          <a-input-password v-model:value="formState.password" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Enable Account Mapping" name="enableAccountMapping">
+        <a-form-item :label="t('datasource.enableAccountMapping')" name="enableAccountMapping">
           <a-switch v-model:checked="formState.enableAccountMapping" />
         </a-form-item>
       </a-form>
@@ -115,10 +115,13 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { message, Modal } from 'ant-design-vue'
+import { useI18n } from 'vue-i18n'
 import { PlusOutlined } from '@ant-design/icons-vue'
 import request from '@/utils/request'
+
+const { t, locale } = useI18n()
 
 const loading = ref(false)
 const modalVisible = ref(false)
@@ -138,14 +141,14 @@ const pagination = reactive({
   total: 0
 })
 
-const datasourceTypes = [
-  { label: 'HashData Lightning (MPP)', value: 'MPP' },
+const datasourceTypes = computed(() => [
+  { label: locale.value === 'zh' ? 'HashData Lightning (MPP)' : 'HashData Lightning (MPP)', value: 'MPP' },
   { label: 'PostgreSQL', value: 'POSTGRESQL' },
   { label: 'Oracle', value: 'ORACLE' },
   { label: 'MySQL', value: 'MYSQL' },
-  { label: 'GoldenDB', value: 'GOLDENDB' },
-  { label: 'DM', value: 'DM' }
-]
+  { label: locale.value === 'zh' ? 'GoldenDB' : 'GoldenDB', value: 'GOLDENDB' },
+  { label: locale.value === 'zh' ? '达梦' : 'DM', value: 'DM' }
+])
 
 const formState = reactive({
   id: undefined as number | undefined,
@@ -159,16 +162,16 @@ const formState = reactive({
   enableAccountMapping: false
 })
 
-const columns = [
-  { title: 'Data Source Name', dataIndex: 'datasourceName', key: 'datasourceName' },
-  { title: 'Type', key: 'datasourceType', width: 160 },
-  { title: 'Host', dataIndex: 'host', key: 'host' },
-  { title: 'Port', dataIndex: 'port', key: 'port', width: 80 },
-  { title: 'Database', dataIndex: 'databaseName', key: 'databaseName' },
-  { title: 'Status', key: 'status', width: 80 },
-  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt' },
-  { title: 'Actions', key: 'actions', width: 200, fixed: 'right' as const }
-]
+const columns = computed(() => [
+  { title: t('datasource.datasourceName'), dataIndex: 'datasourceName', key: 'datasourceName' },
+  { title: t('datasource.datasourceType'), key: 'datasourceType', width: 160 },
+  { title: t('datasource.host'), dataIndex: 'host', key: 'host' },
+  { title: t('datasource.port'), dataIndex: 'port', key: 'port', width: 80 },
+  { title: t('datasource.database'), dataIndex: 'databaseName', key: 'databaseName' },
+  { title: t('common.status'), key: 'status', width: 80 },
+  { title: t('common.createdAt'), dataIndex: 'createdAt', key: 'createdAt' },
+  { title: t('common.actions'), key: 'actions', width: 200, fixed: 'right' as const }
+])
 
 async function loadData() {
   loading.value = true
@@ -233,10 +236,10 @@ async function handleModalOk() {
 
     if (isEdit.value) {
       await request.put(`/datasources/${formState.id}`, formState)
-      message.success('Updated successfully')
+      message.success(t('messages.updateSuccess'))
     } else {
       await request.post('/datasources', formState)
-      message.success('Created successfully')
+      message.success(t('messages.createSuccess'))
     }
 
     modalVisible.value = false
@@ -255,7 +258,7 @@ async function testConnection(record: any) {
     const result = await request.post(`/datasources/${record.id}/test-connection`)
 
     if (result.success) {
-      message.success(`Connection successful! ${result.version || ''}`)
+      message.success(`${t('datasource.connectionSuccess')}! ${result.version || ''}`)
     } else {
       message.error(result.message)
     }
@@ -267,7 +270,7 @@ async function testConnection(record: any) {
 async function deleteDatasource(id: number) {
   try {
     await request.delete(`/datasources/${id}`)
-    message.success('Deleted successfully')
+    message.success(t('messages.deleteSuccess'))
     loadData()
   } catch (error) {
     // Error handled in interceptor
@@ -287,7 +290,7 @@ function getTypeColor(type: string): string {
 }
 
 function getTypeText(type: string): string {
-  const item = datasourceTypes.find(t => t.value === type)
+  const item = datasourceTypes.value.find(t => t.value === type)
   return item?.label || type
 }
 

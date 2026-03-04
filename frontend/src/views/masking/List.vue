@@ -103,7 +103,7 @@
         <a-form-item :label="t('masking.taskName')" name="taskName" :rules="[{ required: true, message: t('common.pleaseInput') }]">
           <a-input v-model:value="formState.taskName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
-        <a-form-item label="Data Source" name="datasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
+        <a-form-item :label="t('datasource.title')" name="datasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
           <a-select v-model:value="formState.datasourceId" :placeholder="t('common.pleaseSelect')" show-search>
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}

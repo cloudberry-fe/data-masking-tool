@@ -190,6 +190,17 @@ class DataSourceService:
         return manager.get_tables(datasource.datasource_type, config, schema)
 
     @staticmethod
+    def get_schemas(db: Session, datasource_id: int) -> List[str]:
+        """获取Schema列表"""
+        datasource = DataSourceService.get_datasource(db, datasource_id)
+        if not datasource:
+            raise ValueError("数据源不存在")
+
+        config = DataSourceService.get_datasource_config(datasource)
+        manager = get_datasource_manager()
+        return manager.get_schemas(datasource.datasource_type, config)
+
+    @staticmethod
     def get_columns(db: Session, datasource_id: int, table: str, schema: Optional[str] = None) -> List[Dict[str, Any]]:
         """获取字段列表"""
         datasource = DataSourceService.get_datasource(db, datasource_id)
@@ -199,6 +210,17 @@ class DataSourceService:
         config = DataSourceService.get_datasource_config(datasource)
         manager = get_datasource_manager()
         return manager.get_columns(datasource.datasource_type, config, table, schema)
+
+    @staticmethod
+    def get_roles(db: Session, datasource_id: int) -> List[str]:
+        """获取数据库角色列表"""
+        datasource = DataSourceService.get_datasource(db, datasource_id)
+        if not datasource:
+            raise ValueError("数据源不存在")
+
+        config = DataSourceService.get_datasource_config(datasource)
+        manager = get_datasource_manager()
+        return manager.get_roles(datasource.datasource_type, config)
 
     # ==================== 引用详情 ====================
 

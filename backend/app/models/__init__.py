@@ -12,6 +12,7 @@ from app.models.masking import (
 )
 from app.models.lineage import DataLineage
 from app.models.sync import DataSyncTask
+from app.models.test_data import TestDataTask, TestDataProfile, TestDataExecution
 from app.models.audit import AuditLog
 
 __all__ = [
@@ -30,5 +31,8 @@ __all__ = [
     "MaskingTaskExecution",
     "DataLineage",
     "DataSyncTask",
+    "TestDataTask",
+    "TestDataProfile",
+    "TestDataExecution",
     "AuditLog",
 ]

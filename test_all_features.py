@@ -607,14 +607,14 @@ class DataMaskingTest:
             self.result.fail("没有可用的数据源进行动态脱敏测试")
             return False
 
-        # 创建动态脱敏规则
+        # 创建动态脱敏规则 - 使用 camelCase 格式
         resp = self.request('POST', '/dynamic-masking/rules', json={
-            "rule_name": f"测试动态脱敏规则_{self.test_table_prefix}",
-            "datasource_id": self.test_datasource_id,
-            "schema_name": "public",
-            "table_name": f"{self.test_table_prefix}_test",
-            "masked_roles": ["analyst", "viewer"],
-            "exempted_roles": ["admin"],
+            "ruleName": f"测试动态脱敏规则_{self.test_table_prefix}",
+            "datasourceId": self.test_datasource_id,
+            "schemaName": "public",
+            "tableName": f"{self.test_table_prefix}_test",
+            "maskedRoles": ["analyst", "viewer"],
+            "exemptedRoles": ["admin"],
             "description": "自动化测试动态脱敏规则"
         })
 
@@ -627,6 +627,25 @@ class DataMaskingTest:
             if list_resp.get('code') == 0:
                 total = list_resp['data'].get('total', 0)
                 self.result.success(f"获取动态脱敏规则列表成功，共 {total} 条")
+
+            # 添加字段规则 - 使用 camelCase 格式
+            col_resp = self.request('POST', f'/dynamic-masking/rules/{rule_id}/columns', json={
+                "columnName": "name",
+                "maskingAlgorithm": "anon.partial",
+                "algorithmParams": {"show_first": 2, "show_last": 2}
+            })
+            if col_resp.get('code') == 0:
+                self.result.success("添加字段规则成功")
+            else:
+                self.result.fail(f"添加字段规则失败: {col_resp.get('message')}")
+
+            # 预览 SQL
+            preview_resp = self.request('GET', f'/dynamic-masking/rules/{rule_id}/preview-sql')
+            if preview_resp.get('code') == 0:
+                sql = preview_resp['data'].get('sql', '')
+                self.result.success(f"预览SQL成功, 长度: {len(sql)}")
+            else:
+                self.result.fail(f"预览SQL失败: {preview_resp.get('message')}")
 
             # 删除规则
             del_resp = self.request('DELETE', f'/dynamic-masking/rules/{rule_id}')
@@ -687,6 +706,93 @@ class DataMaskingTest:
 
         return True
 
+    # ==================== 血缘分析测试 ====================
+    def test_lineage(self):
+        """测试血缘分析 API"""
+        print("\n[13] 血缘分析测试")
+
+        if not self.test_datasource_id:
+            self.result.fail("没有可用的数据源进行血缘分析测试")
+            return False
+
+        # 获取血缘图谱
+        resp = self.request('GET', '/lineage/graph', params={"datasource_id": self.test_datasource_id})
+        if resp.get('code') == 0:
+            nodes = resp['data'].get('nodes', [])
+            edges = resp['data'].get('edges', [])
+            self.result.success(f"获取血缘图谱成功, 节点: {len(nodes)}, 边: {len(edges)}")
+        else:
+            self.result.fail(f"获取血缘图谱失败: {resp.get('message')}")
+
+        # 手动添加血缘关系
+        relation_resp = self.request('POST', '/lineage/relations', json={
+            "datasource_id": self.test_datasource_id,
+            "source_node": "source_table",
+            "target_node": "target_table",
+            "relation_type": "TRANSFORM",
+            "transform_logic": "测试血缘关系"
+        })
+        if relation_resp.get('code') == 0:
+            relation_id = relation_resp['data'].get('id')
+            self.result.success(f"添加血缘关系成功, ID: {relation_id}")
+
+            # 删除血缘关系
+            del_resp = self.request('DELETE', f'/lineage/relations/{relation_id}')
+            if del_resp.get('code') == 0:
+                self.result.success("删除血缘关系成功")
+        else:
+            self.result.fail(f"添加血缘关系失败: {relation_resp.get('message')}")
+
+        return True
+
+    # ==================== 测试数据生成测试 ====================
+    def test_test_data(self):
+        """测试测试数据生成 API"""
+        print("\n[14] 测试数据生成测试")
+
+        if not self.test_datasource_id:
+            self.result.fail("没有可用的数据源进行测试数据生成测试")
+            return False
+
+        # 获取支持的生成器类型
+        gen_resp = self.request('GET', '/test-data/generators')
+        if gen_resp.get('code') == 0:
+            generators = gen_resp['data']
+            self.result.success(f"获取生成器类型成功, 共 {len(generators)} 种")
+        else:
+            self.result.fail(f"获取生成器类型失败: {gen_resp.get('message')}")
+
+        # 创建测试数据生成任务
+        resp = self.request('POST', '/test-data/tasks', json={
+            "taskName": f"测试数据生成任务_{self.test_table_prefix}",
+            "sourceDatasourceId": self.test_datasource_id,
+            "targetDatasourceId": self.test_datasource_id,
+            "dataRatio": 0.1,
+            "keepRelations": True,
+            "scheduleType": "MANUAL"
+        })
+
+        if resp.get('code') == 0:
+            task_id = resp['data']['id']
+            self.result.success(f"创建测试数据生成任务成功, ID: {task_id}")
+
+            # 获取任务列表
+            list_resp = self.request('GET', '/test-data/tasks', params={"page": 1, "page_size": 10})
+            if list_resp.get('code') == 0:
+                total = list_resp['data'].get('total', 0)
+                self.result.success(f"获取测试数据任务列表成功，共 {total} 条")
+
+            # 删除任务
+            del_resp = self.request('DELETE', f'/test-data/tasks/{task_id}')
+            if del_resp.get('code') == 0:
+                self.result.success("删除测试数据生成任务成功")
+            else:
+                self.result.fail(f"删除测试数据生成任务失败: {del_resp.get('message')}")
+        else:
+            self.result.fail(f"创建测试数据生成任务失败: {resp.get('message')}")
+
+        return True
+
     def run_all(self):
         """运行所有测试"""
         print("="*60)
@@ -710,6 +816,8 @@ class DataMaskingTest:
             self.test_permissions()
             self.test_dynamic_masking()  # 新增：动态脱敏测试
             self.test_anonymization()    # 新增：匿名化测试
+            self.test_lineage()          # 新增：血缘分析测试
+            self.test_test_data()        # 新增：测试数据生成测试
 
         except Exception as e:
             self.result.fail(f"测试异常: {str(e)}")

@@ -715,23 +715,11 @@ async function loadSchemas() {
 
   try {
     loadingSchemas.value = true
-    const data = await request.get(`/datasources/${task.value.datasourceId}/tables`)
-    // Extract unique schemas from table names (format: schema.table)
-    const schemas = new Set<string>()
-    schemas.add('public')  // Always include public
-
-    if (Array.isArray(data)) {
-      data.forEach((table: any) => {
-        const tableName = table.tableName || table.table_name
-        if (tableName && tableName.includes('.')) {
-          schemas.add(tableName.split('.')[0])
-        }
-      })
-    }
-
-    schemaList.value = Array.from(schemas).sort()
+    const data = await request.get(`/datasources/${task.value.datasourceId}/schemas`)
+    schemaList.value = data || ['public']
   } catch (error) {
     console.error('Failed to load schemas', error)
+    schemaList.value = ['public']
   } finally {
     loadingSchemas.value = false
   }

@@ -1,15 +1,16 @@
 <template>
-  <a-layout style="min-height: 100vh">
-    <a-layout-sider v-model:collapsed="collapsed" :width="240" collapsible>
+  <a-layout style="min-height: 100vh; background: #F5F7FA;">
+    <a-layout-sider v-model:collapsed="collapsed" :width="240" collapsible :theme="siderTheme">
       <div class="logo">
-        <h2 v-if="!collapsed">Cloudberry</h2>
-        <h2 v-else>CLD</h2>
+        <img v-if="!collapsed" src="/cloudberry-logo.svg" alt="Cloudberry" class="logo-icon" />
+        <img v-else src="/cloudberry-logo-small.svg" alt="CLD" class="logo-icon-small" />
+        <span v-if="!collapsed" class="logo-text">Cloudberry Data Studio</span>
       </div>
       <a-menu
         v-model:selectedKeys="selectedKeys"
         v-model:openKeys="openKeys"
         mode="inline"
-        theme="dark"
+        :theme="siderTheme"
         :inline-collapsed="collapsed"
       >
         <template v-for="item in menuItems" :key="item.path">
@@ -117,6 +118,7 @@ const userStore = useUserStore()
 const collapsed = ref(false)
 const selectedKeys = ref<string[]>([])
 const openKeys = ref<string[]>([])
+const siderTheme = 'light' as const
 
 // Locales
 const locales = LOCALES
@@ -175,20 +177,39 @@ function handleLocaleChange(e: any) {
 </script>
 
 <style scoped>
+/* Apache Style - Light theme with #2563eb primary */
 .logo {
   height: 64px;
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: white;
-  background: rgba(255, 255, 255, 0.1);
+  justify-content: flex-start;
+  gap: 10px;
+  background: #ffffff;
+  padding: 0 12px;
+  border-bottom: 2px solid #e2e8f0;
 }
 
-.logo h2 {
-  margin: 0;
-  font-size: 16px;
-  color: white;
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+}
+
+.logo-icon-small {
+  width: 32px;
+  height: 32px;
+}
+
+.logo-text {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1e293b;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: 0.2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .header {
@@ -196,21 +217,30 @@ function handleLocaleChange(e: any) {
   justify-content: space-between;
   align-items: center;
   padding: 0 24px;
-  background: white;
-  border-bottom: 1px solid #f0f0f0;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 20px;
 }
 
 .header-right .user-dropdown {
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  color: #1e293b;
+  padding: 6px 12px;
+  border-radius: 6px;
+  transition: background 0.2s;
+}
+
+.header-right .user-dropdown:hover {
+  background: #f8fafc;
 }
 
 .lang-switcher {
@@ -218,7 +248,8 @@ function handleLocaleChange(e: any) {
 }
 
 .lang-text {
-  margin-left: 4px;
+  margin-left: 6px;
+  color: #1e293b;
 }
 
 .lang-flag {
@@ -226,10 +257,35 @@ function handleLocaleChange(e: any) {
 }
 
 .content {
-  margin: 24px;
-  padding: 24px;
-  background: white;
-  min-height: calc(100vh - 112px);
+  margin: 20px;
+  padding: 28px;
+  background: #ffffff;
+  min-height: calc(100vh - 104px);
   border-radius: 8px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+/* Light theme menu styling - Apache blue */
+:deep(.ant-menu-light) {
+  background: #ffffff;
+  border-right: 1px solid #e2e8f0;
+}
+
+:deep(.ant-menu-item-selected) {
+  background: rgba(37, 99, 235, 0.08) !important;
+  color: #2563eb !important;
+}
+
+:deep(.ant-menu-item-selected::after) {
+  border-right: 3px solid #2563eb;
+}
+
+:deep(.ant-menu-item:hover) {
+  color: #2563eb;
+}
+
+:deep(.ant-menu-submenu-title:hover) {
+  color: #2563eb;
 }
 </style>

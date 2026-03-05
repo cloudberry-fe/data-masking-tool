@@ -819,13 +819,18 @@ class HashDataAnonManager:
         if algorithm.upper() in ["MASK", "HASH", "REPLACE", "NULL", "ROUND", "OFFSET"]:
             return self._generate_simple_masking_sql(column, algorithm.upper(), params)
 
+        # 规范化算法名称，确保有 anon. 前缀
+        algo_normalized = algorithm
+        if not algorithm.startswith("anon."):
+            algo_normalized = f"anon.{algorithm}"
+
         # 构建 ANON 函数调用
-        func_name = algorithm  # 如 anon.fake_email, anon.partial 等
+        func_name = algo_normalized  # 如 anon.fake_email, anon.partial 等
 
         # 判断是否需要字段作为第一个参数
         # 生成类函数不需要字段参数（fake_*, dummy_*）
         # 转换类函数需要字段参数（partial, hash, digest, pseudo_* 等）
-        needs_column_param = self._function_needs_column_param(algorithm)
+        needs_column_param = self._function_needs_column_param(algo_normalized)
 
         # 处理参数
         param_values = []
@@ -833,7 +838,7 @@ class HashDataAnonManager:
         # 如果需要字段作为第一个参数，先添加字段
         if needs_column_param:
             # 对于 pseudo_* 函数，seed 参数可以是字段或其他值
-            if algorithm.startswith("anon.pseudo_"):
+            if algo_normalized.startswith("anon.pseudo_"):
                 seed = params.get("seed", column)
                 salt = params.get("salt", "")
                 if salt:
@@ -841,28 +846,28 @@ class HashDataAnonManager:
                 else:
                     return f"{func_name}('{seed}')"
             # 对于 partial 函数，字段是第一个参数
-            elif algorithm == "anon.partial":
+            elif algo_normalized == "anon.partial":
                 prefix_len = params.get("prefix_len", 2)
                 mask_char = params.get("mask_char", "*")
                 suffix_len = params.get("suffix_len", 2)
                 return f"{func_name}({column}::text, {prefix_len}, '{mask_char}', {suffix_len})"
             # 对于 partial_email，字段是第一个参数
-            elif algorithm == "anon.partial_email":
+            elif algo_normalized == "anon.partial_email":
                 return f"{func_name}({column}::text)"
             # 对于 hash 函数，字段是第一个参数
-            elif algorithm == "anon.hash":
+            elif algo_normalized == "anon.hash":
                 return f"{func_name}({column}::text)"
             # 对于 digest 函数，需要字段和盐值
-            elif algorithm == "anon.digest":
+            elif algo_normalized == "anon.digest":
                 salt = params.get("salt", "")
                 algo = params.get("algorithm", "sha256")
                 return f"{func_name}({column}::text, '{salt}', '{algo}')"
             # 对于 noise 函数，字段是第一个参数（数值类型）
-            elif algorithm == "anon.noise":
+            elif algo_normalized == "anon.noise":
                 ratio = params.get("ratio", 0.1)
                 return f"{func_name}({column}, {ratio})"
             # 对于 dnoise 函数，字段是第一个参数（日期类型）
-            elif algorithm == "anon.dnoise":
+            elif algo_normalized == "anon.dnoise":
                 interval = params.get("interval", "30 days")
                 return f"{func_name}({column}, '{interval}')"
             else:
@@ -912,30 +917,33 @@ class HashDataAnonManager:
         生成类函数（fake_*, dummy_*, random_id 等）不需要字段参数
         转换类函数（partial, hash, digest 等）需要字段参数
         """
-        algo_lower = algorithm.lower()
+        # 规范化算法名称，确保有 anon. 前缀
+        algo_normalized = algorithm.lower()
+        if not algo_normalized.startswith("anon."):
+            algo_normalized = f"anon.{algo_normalized}"
 
         # 生成类函数 - 不需要字段参数
-        if algo_lower.startswith("anon.fake_"):
+        if algo_normalized.startswith("anon.fake_"):
             return False
-        if algo_lower.startswith("anon.dummy_"):
+        if algo_normalized.startswith("anon.dummy_"):
             return False
-        if algo_lower in ["anon.random_id", "anon.random_id_int", "anon.random_zip"]:
+        if algo_normalized in ["anon.random_id", "anon.random_id_int", "anon.random_zip"]:
             return False
-        if algo_lower == "anon.random_string":
+        if algo_normalized == "anon.random_string":
             return False
 
         # 转换类函数 - 需要字段参数
-        if algo_lower in ["anon.partial", "anon.partial_email", "anon.hash", "anon.digest"]:
+        if algo_normalized in ["anon.partial", "anon.partial_email", "anon.hash", "anon.digest"]:
             return True
-        if algo_lower.startswith("anon.pseudo_"):
+        if algo_normalized.startswith("anon.pseudo_"):
             return True  # 但 pseudo 函数的 seed 参数单独处理
 
         # 噪声类函数 - 需要字段参数
-        if algo_lower in ["anon.noise", "anon.dnoise"]:
+        if algo_normalized in ["anon.noise", "anon.dnoise"]:
             return True
 
         # 随机类函数带范围参数的，不需要字段
-        if algo_lower in ["anon.random_int_between", "anon.random_bigint_between",
+        if algo_normalized in ["anon.random_int_between", "anon.random_bigint_between",
                           "anon.random_date_between", "anon.random_in", "anon.random_hash"]:
             return False
 
@@ -1207,16 +1215,21 @@ class HashDataAnonManager:
             f"EXCEPTION WHEN duplicate_object THEN NULL;",
             f"END $$;",
             "",
+            f"-- 为角色设置 SECURITY LABEL (标记为被脱敏角色)",
+            f"SECURITY LABEL FOR anon ON ROLE {masked_role} IS 'MASKED';",
+            "",
         ]
 
         # 为每个字段添加 SECURITY LABEL
         sql_parts.append("-- 设置字段脱敏规则 (SECURITY LABEL)")
         for col_config in table_config.columns:
             masking_expr = self._generate_anon_function_call(col_config)
-            # SECURITY LABEL 格式
+            # SECURITY LABEL 格式 - 需要转义单引号
+            # 将单引号替换为两个单引号（PostgreSQL 转义方式）
+            masking_expr_escaped = masking_expr.replace("'", "''")
             sql_parts.append(
                 f"SECURITY LABEL FOR anon ON COLUMN {source_table_full}.{col_config.column_name} "
-                f"IS 'MASKED WITH FUNCTION {masking_expr}';"
+                f"IS 'MASKED WITH FUNCTION {masking_expr_escaped}';"
             )
 
         sql_parts.append("")

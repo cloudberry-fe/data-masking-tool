@@ -104,7 +104,12 @@
           <a-input v-model:value="formState.taskName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
         <a-form-item :label="t('datasource.title')" name="datasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
-          <a-select v-model:value="formState.datasourceId" :placeholder="t('common.pleaseSelect')" show-search>
+          <a-select
+            v-model:value="formState.datasourceId"
+            :placeholder="t('common.pleaseSelect')"
+            show-search
+            @change="onDatasourceChange"
+          >
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
@@ -138,10 +143,34 @@
         </a-form-item>
 
         <a-form-item :label="t('masking.sourceSchema')" name="sourceSchema">
-          <a-input v-model:value="formState.sourceSchema" placeholder="public" />
+          <a-select
+            v-model:value="formState.sourceSchema"
+            :placeholder="t('common.pleaseSelect')"
+            :loading="loadingSchemas"
+            :disabled="!formState.datasourceId"
+            allow-clear
+            show-search
+            @focus="loadSchemasIfNeeded"
+          >
+            <a-select-option v-for="schema in schemaList" :key="schema" :value="schema">
+              {{ schema }}
+            </a-select-option>
+          </a-select>
         </a-form-item>
         <a-form-item :label="t('masking.targetSchema')" name="targetSchema">
-          <a-input v-model:value="formState.targetSchema" placeholder="public" />
+          <a-select
+            v-model:value="formState.targetSchema"
+            :placeholder="t('common.pleaseSelect')"
+            :loading="loadingSchemas"
+            :disabled="!formState.datasourceId"
+            allow-clear
+            show-search
+            @focus="loadSchemasIfNeeded"
+          >
+            <a-select-option v-for="schema in schemaList" :key="schema" :value="schema">
+              {{ schema }}
+            </a-select-option>
+          </a-select>
         </a-form-item>
         <a-form-item :label="t('masking.scheduleType')" name="scheduleType">
           <a-select v-model:value="formState.scheduleType">
@@ -179,6 +208,8 @@ const formRef = ref()
 
 const dataSource = ref<any[]>([])
 const datasourceList = ref<any[]>([])
+const schemaList = ref<string[]>([])
+const loadingSchemas = ref(false)
 const search = reactive({
   keyword: '',
   status: undefined as string | undefined
@@ -218,6 +249,27 @@ async function loadDatasources() {
     datasourceList.value = data.items
   } catch (error) {
     //
+  }
+}
+
+async function loadSchemasIfNeeded() {
+  if (!formState.datasourceId) return
+  if (schemaList.value.length > 0) return
+
+  loadingSchemas.value = true
+  try {
+    const data = await request.get(`/datasources/${formState.datasourceId}/schemas`)
+    schemaList.value = data || []
+    // 如果只有一个schema，自动选中
+    if (schemaList.value.length === 1) {
+      if (!formState.sourceSchema) formState.sourceSchema = schemaList.value[0]
+      if (!formState.targetSchema) formState.targetSchema = schemaList.value[0]
+    }
+  } catch (error) {
+    console.error('加载Schema列表失败', error)
+    schemaList.value = ['public']
+  } finally {
+    loadingSchemas.value = false
   }
 }
 
@@ -274,6 +326,7 @@ function showCreateModal() {
     cronExpression: '',
     description: ''
   })
+  schemaList.value = []
   modalVisible.value = true
 }
 
@@ -290,7 +343,36 @@ function showEditModal(record: any) {
     cronExpression: record.cronExpression,
     description: record.description
   })
+  // 编辑时加载schema列表
+  if (record.datasourceId) {
+    loadSchemasForDatasource(record.datasourceId)
+  }
   modalVisible.value = true
+}
+
+async function loadSchemasForDatasource(datasourceId: number) {
+  loadingSchemas.value = true
+  try {
+    const data = await request.get(`/datasources/${datasourceId}/schemas`)
+    schemaList.value = data || []
+  } catch (error) {
+    console.error('加载Schema列表失败', error)
+    schemaList.value = ['public']
+  } finally {
+    loadingSchemas.value = false
+  }
+}
+
+function onDatasourceChange(datasourceId: number) {
+  // 清空已选择的schema
+  formState.sourceSchema = ''
+  formState.targetSchema = ''
+  // 加载新的schema列表
+  if (datasourceId) {
+    loadSchemasForDatasource(datasourceId)
+  } else {
+    schemaList.value = []
+  }
 }
 
 async function handleModalOk() {

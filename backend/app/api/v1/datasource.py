@@ -192,6 +192,20 @@ def get_tables(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.get("/{datasource_id}/schemas", response_model=Response[List[str]])
+def get_schemas(
+    datasource_id: int,
+    db: DBSession,
+    current_user: CurrentUser,
+):
+    """获取Schema列表"""
+    try:
+        schemas = DataSourceService.get_schemas(db, datasource_id)
+        return Response(data=schemas)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.get("/{datasource_id}/tables/{table_name}/columns", response_model=Response[List[ColumnInfo]], response_model_by_alias=True)
 def get_columns(
     datasource_id: int,
@@ -206,13 +220,28 @@ def get_columns(
         actual_schema = schema
         actual_table = table_name
 
-        if '.' in table_name and not schema:
+        # 无论 schema 参数是否传递，都尝试从 table_name 中解析
+        if '.' in table_name:
             parts = table_name.split('.', 1)
-            actual_schema = parts[0]
+            actual_schema = parts[0]  # URL 中的 schema 优先
             actual_table = parts[1]
 
         columns = DataSourceService.get_columns(db, datasource_id, actual_table, actual_schema)
         return Response(data=columns)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.get("/{datasource_id}/roles", response_model=Response[List[str]])
+def get_roles(
+    datasource_id: int,
+    db: DBSession,
+    current_user: CurrentUser,
+):
+    """获取数据库角色列表"""
+    try:
+        roles = DataSourceService.get_roles(db, datasource_id)
+        return Response(data=roles)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 

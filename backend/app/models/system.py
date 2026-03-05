@@ -41,6 +41,7 @@ class User(Base):
     created_masking_tasks = relationship("MaskingTask", back_populates="created_by_user")
     created_masking_templates = relationship("MaskingTemplate", back_populates="created_by_user")
     created_sync_tasks = relationship("DataSyncTask", back_populates="created_by_user")
+    created_test_data_tasks = relationship("TestDataTask", back_populates="created_by_user")
     audit_logs = relationship("AuditLog", back_populates="user")
 
 

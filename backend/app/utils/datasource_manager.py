@@ -23,6 +23,11 @@ class BaseDatasourceConnector(ABC):
         pass
 
     @abstractmethod
+    def get_schemas(self, config: Dict[str, Any]) -> List[str]:
+        """获取Schema列表"""
+        pass
+
+    @abstractmethod
     def get_tables(self, config: Dict[str, Any], schema: Optional[str] = None) -> List[Dict[str, Any]]:
         """获取表列表"""
         pass
@@ -30,6 +35,11 @@ class BaseDatasourceConnector(ABC):
     @abstractmethod
     def get_columns(self, config: Dict[str, Any], table: str, schema: Optional[str] = None) -> List[Dict[str, Any]]:
         """获取字段列表"""
+        pass
+
+    @abstractmethod
+    def get_roles(self, config: Dict[str, Any]) -> List[str]:
+        """获取数据库角色列表"""
         pass
 
     @abstractmethod
@@ -64,10 +74,10 @@ class PostgreSQLConnector(BaseDatasourceConnector):
             logger.exception("PostgreSQL连接测试失败")
             return False, f"连接失败: {str(e)}", None
 
-    def get_tables(self, config: Dict[str, Any], schema: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_schemas(self, config: Dict[str, Any]) -> List[str]:
+        """获取PostgreSQL Schema列表"""
         try:
             import psycopg2
-            from psycopg2.extras import RealDictCursor
 
             conn = psycopg2.connect(
                 host=config.get("host"),
@@ -76,13 +86,40 @@ class PostgreSQLConnector(BaseDatasourceConnector):
                 user=config.get("username"),
                 password=config.get("password"),
             )
-            cursor = conn.cursor(cursor_factory=RealDictCursor)
+            cursor = conn.cursor()
+
+            cursor.execute("""
+                SELECT schema_name
+                FROM information_schema.schemata
+                WHERE schema_name NOT IN ('pg_catalog', 'information_schema', 'pg_toast')
+                ORDER BY schema_name
+            """)
+
+            schemas = [row[0] for row in cursor.fetchall()]
+
+            cursor.close()
+            conn.close()
+            return schemas
+        except Exception as e:
+            logger.exception("获取Schema列表失败")
+            raise
+
+    def get_tables(self, config: Dict[str, Any], schema: Optional[str] = None) -> List[Dict[str, Any]]:
+        try:
+            import psycopg2
+
+            conn = psycopg2.connect(
+                host=config.get("host"),
+                port=config.get("port", 5432),
+                database=config.get("database_name"),
+                user=config.get("username"),
+                password=config.get("password"),
+            )
+            cursor = conn.cursor()
 
             search_schema = schema or "public"
             cursor.execute("""
-                SELECT
-                    table_name,
-                    obj_description(format('%I.%I', table_schema, table_name)::regclass) AS table_comment
+                SELECT table_name
                 FROM information_schema.tables
                 WHERE table_schema = %s
                 ORDER BY table_name
@@ -91,8 +128,8 @@ class PostgreSQLConnector(BaseDatasourceConnector):
             tables = []
             for row in cursor.fetchall():
                 tables.append({
-                    "table_name": row["table_name"],
-                    "table_comment": row.get("table_comment") or ""
+                    "table_name": row[0],
+                    "table_comment": ""
                 })
 
             cursor.close()
@@ -155,6 +192,38 @@ class PostgreSQLConnector(BaseDatasourceConnector):
             logger.exception("获取字段列表失败")
             raise
 
+    def get_roles(self, config: Dict[str, Any]) -> List[str]:
+        """获取PostgreSQL角色列表"""
+        try:
+            import psycopg2
+
+            conn = psycopg2.connect(
+                host=config.get("host"),
+                port=config.get("port", 5432),
+                database=config.get("database_name"),
+                user=config.get("username"),
+                password=config.get("password"),
+            )
+            cursor = conn.cursor()
+
+            # 查询所有非系统角色
+            cursor.execute("""
+                SELECT rolname
+                FROM pg_roles
+                WHERE rolname NOT LIKE 'pg_%'
+                AND rolname NOT LIKE 'gp_%'
+                ORDER BY rolname
+            """)
+
+            roles = [row[0] for row in cursor.fetchall()]
+
+            cursor.close()
+            conn.close()
+            return roles
+        except Exception as e:
+            logger.exception("获取角色列表失败")
+            raise
+
     def execute_sql(self, config: Dict[str, Any], sql: str) -> List[Dict[str, Any]]:
         try:
             import psycopg2
@@ -209,6 +278,31 @@ class MySQLConnector(BaseDatasourceConnector):
         except Exception as e:
             logger.exception("MySQL连接测试失败")
             return False, f"连接失败: {str(e)}", None
+
+    def get_schemas(self, config: Dict[str, Any]) -> List[str]:
+        """获取MySQL数据库列表（MySQL中schema等同于database）"""
+        try:
+            import pymysql
+
+            conn = pymysql.connect(
+                host=config.get("host"),
+                port=config.get("port", 3306),
+                user=config.get("username"),
+                password=config.get("password"),
+            )
+            cursor = conn.cursor()
+
+            cursor.execute("SHOW DATABASES")
+
+            schemas = [row[0] for row in cursor.fetchall()
+                      if row[0] not in ('information_schema', 'mysql', 'performance_schema', 'sys')]
+
+            cursor.close()
+            conn.close()
+            return schemas
+        except Exception as e:
+            logger.exception("获取数据库列表失败")
+            raise
 
     def get_tables(self, config: Dict[str, Any], schema: Optional[str] = None) -> List[Dict[str, Any]]:
         try:
@@ -292,6 +386,29 @@ class MySQLConnector(BaseDatasourceConnector):
             logger.exception("获取字段列表失败")
             raise
 
+    def get_roles(self, config: Dict[str, Any]) -> List[str]:
+        """获取MySQL用户列表"""
+        try:
+            import pymysql
+
+            conn = pymysql.connect(
+                host=config.get("host"),
+                port=config.get("port", 3306),
+                user=config.get("username"),
+                password=config.get("password"),
+            )
+            cursor = conn.cursor()
+
+            cursor.execute("SELECT user FROM mysql.user")
+            roles = [row[0] for row in cursor.fetchall()]
+
+            cursor.close()
+            conn.close()
+            return roles
+        except Exception as e:
+            logger.exception("获取用户列表失败")
+            raise
+
     def execute_sql(self, config: Dict[str, Any], sql: str) -> List[Dict[str, Any]]:
         try:
             import pymysql
@@ -332,6 +449,12 @@ class OracleConnector(BaseDatasourceConnector):
         except Exception as e:
             return False, f"连接失败: {str(e)}", None
 
+    def get_schemas(self, config: Dict[str, Any]) -> List[str]:
+        raise NotImplementedError("Oracle连接器待实现")
+
+    def get_roles(self, config: Dict[str, Any]) -> List[str]:
+        raise NotImplementedError("Oracle连接器待实现")
+
     def get_tables(self, config: Dict[str, Any], schema: Optional[str] = None) -> List[Dict[str, Any]]:
         raise NotImplementedError("Oracle连接器待实现")
 
@@ -371,6 +494,11 @@ class DatasourceManager:
         connector = self.get_connector(datasource_type)
         return connector.test_connection(config)
 
+    def get_schemas(self, datasource_type: str, config: Dict[str, Any]) -> List[str]:
+        """获取Schema列表"""
+        connector = self.get_connector(datasource_type)
+        return connector.get_schemas(config)
+
     def get_tables(self, datasource_type: str, config: Dict[str, Any], schema: Optional[str] = None) -> List[Dict[str, Any]]:
         """获取表列表"""
         connector = self.get_connector(datasource_type)
@@ -380,6 +508,11 @@ class DatasourceManager:
         """获取字段列表"""
         connector = self.get_connector(datasource_type)
         return connector.get_columns(config, table, schema)
+
+    def get_roles(self, datasource_type: str, config: Dict[str, Any]) -> List[str]:
+        """获取数据库角色列表"""
+        connector = self.get_connector(datasource_type)
+        return connector.get_roles(config)
 
     def execute_sql(self, datasource_type: str, config: Dict[str, Any], sql: str) -> List[Dict[str, Any]]:
         """执行SQL"""

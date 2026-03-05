@@ -38,8 +38,9 @@ class DynamicMaskingRule(Base):
     exempted_roles = Column(JSON, comment="豁免角色列表(可查看原始数据)")
 
     # 状态
-    status = Column(String(32), default="DRAFT", comment="状态: DRAFT/ACTIVE/INACTIVE")
+    status = Column(String(32), default="DRAFT", comment="状态: DRAFT/ACTIVE/INACTIVE/ERROR")
     is_enabled = Column(Boolean, default=False, comment="是否已启用")
+    error_message = Column(Text, comment="错误信息")
 
     # 元数据
     description = Column(Text, comment="描述")

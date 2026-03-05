@@ -747,7 +747,7 @@ class DataMaskingTest:
 
     # ==================== 测试数据生成测试 ====================
     def test_test_data(self):
-        """测试测试数据生成 API"""
+        """测试测试数据生成 API（仅API测试）"""
         print("\n[14] 测试数据生成测试")
 
         if not self.test_datasource_id:
@@ -793,6 +793,268 @@ class DataMaskingTest:
 
         return True
 
+    # ==================== 翻数工具数据库验证测试 ====================
+    def test_flipping_validation(self):
+        """
+        测试翻数工具完整流程并验证数据库结果
+        创建源表 -> 创建翻数任务 -> 执行 -> 验证目标表
+        """
+        print("\n[15] 翻数工具数据库验证测试")
+
+        if not self.test_datasource_id:
+            self.result.fail("没有可用的数据源进行翻数测试")
+            return False
+
+        try:
+            import psycopg2
+
+            # 获取数据源连接信息
+            resp = self.request('GET', f'/datasources/{self.test_datasource_id}')
+            if resp.get('code') != 0:
+                self.result.fail("无法获取数据源详情")
+                return False
+
+            ds = resp['data']
+            conn = psycopg2.connect(
+                host=ds.get('host', 'localhost'),
+                port=ds.get('port', 5432),
+                database=ds.get('databaseName', 'postgres'),
+                user=ds.get('username', 'postgres'),
+                password=ds.get('password', '')
+            )
+            conn.autocommit = True
+            cursor = conn.cursor()
+
+            # 定义测试表名
+            source_table = f"{self.test_table_prefix}_flipping_source"
+            target_table = f"{self.test_table_prefix}_flipping_target"
+
+            # 清理可能存在的旧表
+            cursor.execute(f"DROP TABLE IF EXISTS public.{source_table}")
+            cursor.execute(f"DROP TABLE IF EXISTS public.{target_table}")
+
+            # 创建源表并插入测试数据
+            create_sql = f"""
+            CREATE TABLE public.{source_table} (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100),
+                email VARCHAR(100),
+                phone VARCHAR(20),
+                amount NUMERIC(10, 2),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+            cursor.execute(create_sql)
+
+            # 插入测试数据
+            insert_sql = f"""
+            INSERT INTO public.{source_table} (name, email, phone, amount) VALUES
+            ('张三', 'zhangsan@example.com', '13812345678', 1000.00),
+            ('李四', 'lisi@example.com', '13987654321', 2000.00),
+            ('王五', 'wangwu@example.com', '13611112222', 3000.00),
+            ('赵六', 'zhaoliu@example.com', '13733334444', 4000.00),
+            ('钱七', 'qianqi@example.com', '13855556666', 5000.00)
+            """
+            cursor.execute(insert_sql)
+
+            self.result.success(f"创建源表成功: {source_table}")
+
+            # 获取源表数据
+            cursor.execute(f"SELECT COUNT(*) FROM public.{source_table}")
+            source_count = cursor.fetchone()[0]
+            self.result.success(f"源表数据条数: {source_count}")
+
+            # 创建翻数任务
+            task_resp = self.request('POST', '/test-data/tasks', json={
+                "taskName": f"翻数测试任务_{self.test_table_prefix}",
+                "sourceDatasourceId": self.test_datasource_id,
+                "targetDatasourceId": self.test_datasource_id,
+                "dataRatio": 1.0,
+                "keepRelations": False,
+                "scheduleType": "MANUAL"
+            })
+
+            if task_resp.get('code') != 0:
+                self.result.fail(f"创建翻数任务失败: {task_resp.get('message')}")
+                return False
+
+            task_id = task_resp['data']['id']
+            self.result.success(f"创建翻数任务成功, ID: {task_id}")
+
+            # 配置表映射
+            config_resp = self.request('PUT', f'/test-data/tasks/{task_id}', json={
+                "tableConfigs": {
+                    "tables": [
+                        {
+                            "sourceTable": f"public.{source_table}",
+                            "sourceSchema": "public",
+                            "targetSchema": "public",
+                            "targetTable": target_table,
+                            "rowCount": 10,  # 生成10条测试数据
+                            "columns": [
+                                {"name": "name", "generator": "fake_name"},
+                                {"name": "email", "generator": "fake_email"},
+                                {"name": "phone", "generator": "fake_phone"},
+                                {"name": "amount", "generator": "random_float", "params": {"min": 100, "max": 10000}}
+                            ]
+                        }
+                    ],
+                    "relations": []
+                },
+                "status": "READY"
+            })
+
+            if config_resp.get('code') != 0:
+                self.result.fail(f"配置表映射失败: {config_resp.get('message')}")
+                self.request('DELETE', f'/test-data/tasks/{task_id}')
+                return False
+
+            self.result.success("配置表映射成功")
+
+            # 执行翻数任务
+            exec_resp = self.request('POST', f'/test-data/tasks/{task_id}/execute')
+            if exec_resp.get('code') != 0:
+                self.result.fail(f"执行翻数任务失败: {exec_resp.get('message')}")
+                self.request('DELETE', f'/test-data/tasks/{task_id}')
+                return False
+
+            self.result.success("翻数任务已提交执行")
+
+            # 等待执行完成（最多等待30秒）
+            print("    等待翻数任务执行完成...")
+            max_wait = 30
+            for i in range(max_wait):
+                time.sleep(1)
+
+                # 检查执行状态
+                exec_list = self.request('GET', '/test-data/executions', params={"task_id": task_id})
+                if exec_list.get('code') == 0 and exec_list['data']['items']:
+                    execution = exec_list['data']['items'][0]
+                    status = execution.get('status')
+                    if status == 'SUCCESS':
+                        self.result.success(f"翻数任务执行成功 (等待 {i+1} 秒)")
+                        break
+                    elif status == 'FAILED':
+                        error_msg = execution.get('errorMessage', '未知错误')
+                        self.result.fail(f"翻数任务执行失败: {error_msg}")
+                        break
+                else:
+                    # 继续等待
+                    continue
+            else:
+                self.result.fail(f"翻数任务执行超时 ({max_wait}秒)")
+
+            # 再等待一下确保数据写入
+            time.sleep(2)
+
+            # ========== 数据库验证 ==========
+            print("\n    === 开始数据库验证 ===")
+
+            # 1. 验证目标表是否存在
+            cursor.execute(f"""
+                SELECT EXISTS (
+                    SELECT FROM information_schema.tables
+                    WHERE table_schema = 'public' AND table_name = '{target_table}'
+                )
+            """)
+            table_exists = cursor.fetchone()[0]
+            if table_exists:
+                self.result.success(f"✓ 目标表存在: {target_table}")
+            else:
+                self.result.fail(f"✗ 目标表不存在: {target_table}")
+                # 打印所有表用于调试
+                cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'")
+                all_tables = cursor.fetchall()
+                print(f"    当前 public schema 下的所有表: {[t[0] for t in all_tables]}")
+
+            # 2. 验证目标表数据条数
+            if table_exists:
+                cursor.execute(f"SELECT COUNT(*) FROM public.{target_table}")
+                target_count = cursor.fetchone()[0]
+                expected_count = 10  # 我们配置的是生成10条
+
+                if target_count > 0:
+                    self.result.success(f"✓ 目标表数据条数: {target_count}")
+                    if target_count >= expected_count:
+                        self.result.success(f"✓ 数据条数符合预期 (>= {expected_count})")
+                    else:
+                        self.result.fail(f"✗ 数据条数不足: 期望 {expected_count}, 实际 {target_count}")
+                else:
+                    self.result.fail(f"✗ 目标表为空，没有数据")
+
+            # 3. 验证数据内容
+            if table_exists:
+                cursor.execute(f"SELECT name, email, phone, amount FROM public.{target_table} LIMIT 3")
+                rows = cursor.fetchall()
+
+                print(f"\n    目标表数据示例:")
+                for i, row in enumerate(rows):
+                    name, email, phone, amount = row
+                    print(f"      行{i+1}: name={name}, email={email}, phone={phone}, amount={amount}")
+
+                    # 验证数据不为空
+                    if name and email and phone:
+                        self.result.success(f"✓ 行{i+1}数据有效")
+                    else:
+                        self.result.fail(f"✗ 行{i+1}数据不完整")
+
+                # 验证数据是否被脱敏/生成（与源表不同）
+                cursor.execute(f"SELECT name FROM public.{source_table} LIMIT 1")
+                source_name = cursor.fetchone()[0]
+                cursor.execute(f"SELECT name FROM public.{target_table} LIMIT 1")
+                target_name = cursor.fetchone()
+
+                if target_name:
+                    target_name = target_name[0]
+                    if source_name != target_name:
+                        self.result.success(f"✓ 数据已生成/脱敏: '{source_name}' -> '{target_name}'")
+                    else:
+                        self.result.success(f"数据保持原值: '{source_name}'")
+
+            # 4. 验证表结构
+            if table_exists:
+                cursor.execute(f"""
+                    SELECT column_name, data_type
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = '{target_table}'
+                    ORDER BY ordinal_position
+                """)
+                columns = cursor.fetchall()
+                column_names = [col[0] for col in columns]
+
+                expected_columns = ['id', 'name', 'email', 'phone', 'amount', 'created_at']
+                missing_columns = [c for c in expected_columns if c not in column_names]
+
+                if not missing_columns:
+                    self.result.success(f"✓ 表结构正确，包含所有期望列")
+                else:
+                    self.result.fail(f"✗ 表结构缺少列: {missing_columns}")
+
+                print(f"    目标表列: {column_names}")
+
+            # 清理测试数据
+            try:
+                cursor.execute(f"DROP TABLE IF EXISTS public.{source_table}")
+                cursor.execute(f"DROP TABLE IF EXISTS public.{target_table}")
+                self.result.success("清理测试数据成功")
+            except Exception as cleanup_error:
+                print(f"    清理警告: {cleanup_error}")
+
+            # 删除测试任务
+            self.request('DELETE', f'/test-data/tasks/{task_id}')
+
+            cursor.close()
+            conn.close()
+
+        except ImportError:
+            self.result.fail("psycopg2 未安装，跳过翻数验证测试")
+        except Exception as e:
+            self.result.fail(f"翻数验证测试异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
+        return True
+
     def run_all(self):
         """运行所有测试"""
         print("="*60)
@@ -818,6 +1080,7 @@ class DataMaskingTest:
             self.test_anonymization()    # 新增：匿名化测试
             self.test_lineage()          # 新增：血缘分析测试
             self.test_test_data()        # 新增：测试数据生成测试
+            self.test_flipping_validation()  # 新增：翻数工具数据库验证测试
 
         except Exception as e:
             self.result.fail(f"测试异常: {str(e)}")

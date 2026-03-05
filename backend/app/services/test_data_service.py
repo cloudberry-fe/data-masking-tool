@@ -303,6 +303,75 @@ class TestDataService:
 
         return "random_string"
 
+    def _get_generator_for_type(self, col_name: str, data_type: str) -> str:
+        """
+        根据列名和数据类型获取合适的生成器
+
+        Args:
+            col_name: 列名
+            data_type: 数据类型
+
+        Returns:
+            生成器类型
+        """
+        data_type = data_type.lower() if data_type else ""
+
+        # 根据列名推断（优先级更高）
+        col_lower = col_name.lower()
+        if any(kw in col_lower for kw in ['name', '姓名', '名字']):
+            return "fake_name"
+        if any(kw in col_lower for kw in ['email', '邮箱', '邮件']):
+            return "fake_email"
+        if any(kw in col_lower for kw in ['phone', 'tel', 'mobile', '电话', '手机']):
+            return "fake_phone"
+        if any(kw in col_lower for kw in ['address', '地址', '住址']):
+            return "fake_address"
+
+        # 根据数据类型推断
+        if any(kw in data_type for kw in ['int', 'serial', 'bigserial', 'smallint', 'bigint']):
+            return "random_int"
+        if any(kw in data_type for kw in ['float', 'double', 'decimal', 'numeric', 'real']):
+            return "random_float"
+        if 'date' in data_type and 'time' not in data_type:
+            return "random_date"
+        if any(kw in data_type for kw in ['time', 'timestamp']):
+            return "random_datetime"
+        if 'bool' in data_type:
+            return "random_int"  # 用0/1表示布尔值
+
+        return "random_string"
+
+    def _ensure_generator_type_compatibility(self, generator: str, data_type: str) -> str:
+        """
+        确保生成器与数据类型兼容
+
+        Args:
+            generator: 当前生成器
+            data_type: 数据类型
+
+        Returns:
+            兼容的生成器类型
+        """
+        data_type = data_type.lower() if data_type else ""
+
+        # 数值类型必须使用数值生成器
+        numeric_types = ['int', 'serial', 'bigserial', 'smallint', 'bigint', 'float', 'double', 'decimal', 'numeric', 'real']
+        is_numeric = any(kw in data_type for kw in numeric_types)
+
+        # 字符串生成器列表
+        string_generators = ['random_string', 'fake_name', 'fake_email', 'fake_phone', 'fake_address', 'fake_company']
+
+        if is_numeric and generator in string_generators:
+            # 数值类型但配置了字符串生成器，自动切换到数值生成器
+            if any(kw in data_type for kw in ['int', 'serial', 'bigserial', 'smallint', 'bigint']):
+                logger.warning(f"生成器 '{generator}' 与数据类型 '{data_type}' 不兼容，自动切换为 'random_int'")
+                return "random_int"
+            else:
+                logger.warning(f"生成器 '{generator}' 与数据类型 '{data_type}' 不兼容，自动切换为 'random_float'")
+                return "random_float"
+
+        return generator
+
     def generate_value(
         self,
         generator_type: str,
@@ -537,6 +606,8 @@ class TestDataService:
         """
         # 创建独立的数据库会话
         db = SessionLocal()
+        error_messages = []  # 收集所有错误信息
+
         try:
             task = db.scalar(select(TestDataTask).where(TestDataTask.id == task_id))
             execution = db.scalar(select(TestDataExecution).where(TestDataExecution.id == execution_id))
@@ -602,22 +673,102 @@ class TestDataService:
                     logger.info(f"源表列数: {len(source_columns)}")
 
                     if not source_columns:
-                        logger.error(f"无法获取源表 {full_source_table} 的列信息")
+                        error_msg = f"无法获取源表 {full_source_table} 的列信息"
+                        logger.error(error_msg)
+                        error_messages.append(error_msg)
                         failed_records += row_count
                         continue
 
-                    # 如果没有配置列，使用源表的所有列
-                    if not columns:
-                        columns = [{"name": col["column_name"], "generator": "random_string"} for col in source_columns]
-                        logger.info(f"使用自动列配置: {[c['name'] for c in columns]}")
+                    # 构建列名到数据类型的映射
+                    column_type_map = {col["column_name"]: col.get("data_type", "").lower() for col in source_columns}
 
-                    # 先创建目标表（如果不存在）
-                    create_table_sql = f"""CREATE TABLE IF NOT EXISTS {full_target_table} AS SELECT * FROM {full_source_table} WHERE 1=0"""
+                    # 如果没有配置列，使用源表的所有列，并根据数据类型自动选择生成器
+                    if not columns:
+                        columns = []
+                        for col in source_columns:
+                            col_name = col["column_name"]
+                            col_type = col.get("data_type", "").lower()
+                            # 根据数据类型选择生成器
+                            generator = self._get_generator_for_type(col_name, col_type)
+                            columns.append({"name": col_name, "generator": generator})
+                        logger.info(f"使用自动列配置: {[c['name'] + ':' + c['generator'] for c in columns]}")
+                    else:
+                        # 检查并修正生成器与数据类型的兼容性
+                        for col in columns:
+                            col_name = col.get("name")
+                            col_type = column_type_map.get(col_name, "")
+                            generator = col.get("generator", "random_string")
+                            # 如果生成器与数据类型不兼容，自动修正
+                            col["generator"] = self._ensure_generator_type_compatibility(generator, col_type)
+
+                    # 先创建目标表（基于列定义创建，而不是复制源表结构）
+                    # 因为源表和目标表可能在不同的数据库
                     try:
+                        # 构建建表SQL
+                        column_defs = []
+                        for col in source_columns:
+                            col_name = col.get("column_name")
+                            col_type = col.get("data_type", "text").lower()
+
+                            # 映射常见数据类型到标准PostgreSQL类型
+                            if "integer" in col_type or "serial" in col_type or "smallint" in col_type or "bigint" in col_type:
+                                # 整数类型不带长度
+                                if "big" in col_type:
+                                    col_type = "BIGINT"
+                                elif "small" in col_type:
+                                    col_type = "SMALLINT"
+                                else:
+                                    col_type = "INTEGER"
+                            elif "numeric" in col_type or "decimal" in col_type:
+                                # NUMERIC可以带精度
+                                precision = col.get("numeric_precision")
+                                scale = col.get("numeric_scale")
+                                if precision and scale:
+                                    col_type = f"NUMERIC({precision},{scale})"
+                                elif precision:
+                                    col_type = f"NUMERIC({precision})"
+                                else:
+                                    col_type = "NUMERIC(10,2)"
+                            elif "float" in col_type or "double" in col_type or "real" in col_type:
+                                col_type = "DOUBLE PRECISION"
+                            elif "varchar" in col_type or "character varying" in col_type:
+                                char_len = col.get("character_maximum_length")
+                                if char_len:
+                                    col_type = f"VARCHAR({char_len})"
+                                else:
+                                    col_type = "VARCHAR(255)"
+                            elif "char" in col_type or "character" in col_type:
+                                char_len = col.get("character_maximum_length")
+                                if char_len and char_len > 1:
+                                    col_type = f"CHAR({char_len})"
+                                else:
+                                    col_type = "VARCHAR(255)"  # 避免使用 CHAR(1)
+                            elif "text" in col_type:
+                                col_type = "TEXT"
+                            elif "timestamp" in col_type:
+                                col_type = "TIMESTAMP"
+                            elif "date" in col_type:
+                                col_type = "DATE"
+                            elif "boolean" in col_type or "bool" in col_type:
+                                col_type = "BOOLEAN"
+                            else:
+                                # 默认使用 TEXT 类型
+                                col_type = "TEXT"
+
+                            column_defs.append(f"{col_name} {col_type}")
+
+                        # 如果表已存在，先删除
+                        drop_sql = f"DROP TABLE IF EXISTS {full_target_table}"
+                        manager.execute_sql(target_ds.datasource_type, target_config, drop_sql)
+
+                        create_table_sql = f"""CREATE TABLE {full_target_table} ({', '.join(column_defs)})"""
                         manager.execute_sql(target_ds.datasource_type, target_config, create_table_sql)
                         logger.info(f"目标表创建成功: {full_target_table}")
                     except Exception as e:
-                        logger.warning(f"创建目标表失败（可能已存在）: {e}")
+                        error_msg = f"创建目标表失败: {str(e)}"
+                        logger.warning(error_msg)
+                        error_messages.append(error_msg)
+                        # 表可能已存在，继续尝试插入数据
 
                     # 生成并插入数据
                     batch_size = 100
@@ -654,7 +805,9 @@ class TestDataService:
                                 success_records += len(batch_rows)
                                 logger.debug(f"成功插入 {len(batch_rows)} 行到 {full_target_table}")
                             except Exception as e:
-                                logger.error(f"插入数据失败: {e}")
+                                error_msg = f"插入数据到 {full_target_table} 失败: {str(e)}"
+                                logger.error(error_msg)
+                                error_messages.append(error_msg)
                                 failed_records += len(batch_rows)
 
                         total_records = success_records + failed_records
@@ -670,11 +823,12 @@ class TestDataService:
                     db.commit()
 
                 except Exception as e:
-                    logger.exception(f"生成表 {target_table} 数据失败")
+                    error_msg = f"生成表 {target_table} 数据失败: {str(e)}"
+                    logger.exception(error_msg)
+                    error_messages.append(error_msg)
                     failed_records += row_count
 
-            # 完成
-            execution.status = "SUCCESS"
+            # 完成后根据成功/失败情况设置状态
             execution.end_time = datetime.now()
             execution.total_tables = len(task.table_configs.get("tables", []))
             execution.completed_tables = completed_tables
@@ -682,8 +836,18 @@ class TestDataService:
             execution.success_records = success_records
             execution.failed_records = failed_records
 
-            # 更新任务状态
-            task.status = "READY"
+            # 根据执行结果设置状态和错误信息
+            if failed_records == 0 and success_records > 0:
+                execution.status = "SUCCESS"
+                task.status = "READY"
+            elif success_records == 0 and failed_records > 0:
+                execution.status = "FAILED"
+                execution.error_message = "所有记录处理失败:\n" + "\n".join(error_messages[:10])  # 最多显示10条错误
+                task.status = "FAILED"
+            else:
+                execution.status = "PARTIAL_SUCCESS"
+                execution.error_message = f"部分记录处理失败 ({failed_records}/{total_records}):\n" + "\n".join(error_messages[:10])
+                task.status = "READY"
 
             db.commit()
 

@@ -337,20 +337,23 @@ def enable_dynamic_rule(
     启用动态脱敏规则
 
     执行操作：
-    1. 为表字段设置 SECURITY LABEL
-    2. 为角色设置 SECURITY LABEL
-    3. 创建脱敏视图
-    4. 授权角色
+    1. 验证表、角色、字段是否存在
+    2. 为表字段设置 SECURITY LABEL
+    3. 为角色设置 SECURITY LABEL
+    4. 创建脱敏视图
+    5. 授权角色
     """
     from app.models.dynamic_masking import DynamicMaskingRule
     from app.models.datasource import DataSource
     from app.services.datasource_service import DataSourceService
     from app.utils.hashdata_anon import HashDataAnonManager, MaskingColumnConfig, MaskingTableConfig
+    from app.utils.datasource_manager import get_datasource_manager
 
     rule = db.get(DynamicMaskingRule, rule_id)
     if not rule:
         raise HTTPException(status_code=404, detail="规则不存在")
 
+    # 验证1: 是否配置了字段规则
     if not rule.column_rules:
         raise HTTPException(status_code=400, detail="请先配置字段脱敏规则")
 
@@ -362,6 +365,51 @@ def enable_dynamic_rule(
         datasource_config = DataSourceService.get_datasource_config(datasource)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"数据源配置错误: {str(e)}")
+
+    # 前置验证
+    manager = get_datasource_manager()
+    validation_errors = []
+
+    # 验证2: 检查表是否存在
+    try:
+        tables = manager.get_tables(datasource.datasource_type, datasource_config, rule.schema_name)
+        table_names = [t.get('table_name') or t.get('tableName') for t in tables]
+        if rule.table_name not in table_names:
+            validation_errors.append(f"表 '{rule.schema_name}.{rule.table_name}' 不存在")
+    except Exception as e:
+        validation_errors.append(f"无法验证表是否存在: {str(e)}")
+
+    # 验证3: 检查角色是否存在
+    try:
+        existing_roles = manager.get_roles(datasource.datasource_type, datasource_config)
+        for role in rule.masked_roles:
+            if role not in existing_roles:
+                validation_errors.append(f"角色 '{role}' 不存在，数据库中的角色: {', '.join(existing_roles)}")
+        if rule.exempted_roles:
+            for role in rule.exempted_roles:
+                if role not in existing_roles:
+                    validation_errors.append(f"豁免角色 '{role}' 不存在")
+    except Exception as e:
+        validation_errors.append(f"无法验证角色是否存在: {str(e)}")
+
+    # 验证4: 检查字段是否存在
+    if not validation_errors:  # 只有表存在时才检查字段
+        try:
+            columns = manager.get_columns(datasource.datasource_type, datasource_config, rule.table_name, rule.schema_name)
+            column_names = [col.get('column_name') for col in columns]
+            for col_rule in rule.column_rules:
+                if col_rule.column_name not in column_names:
+                    validation_errors.append(f"字段 '{col_rule.column_name}' 在表 '{rule.table_name}' 中不存在")
+        except Exception as e:
+            validation_errors.append(f"无法验证字段是否存在: {str(e)}")
+
+    # 如果有验证错误，返回详细信息
+    if validation_errors:
+        error_msg = "; ".join(validation_errors)
+        rule.error_message = error_msg
+        rule.status = "ERROR"
+        db.commit()
+        raise HTTPException(status_code=400, detail=error_msg)
 
     anon_manager = HashDataAnonManager(datasource_config)
 

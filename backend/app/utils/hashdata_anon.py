@@ -1248,7 +1248,11 @@ class HashDataAnonManager:
 
         sql_parts.append("")
         sql_parts.append("-- 启用动态脱敏")
-        sql_parts.append("ALTER DATABASE CURRENT_DATABASE SET anon.enable_dynamic_masking = true;")
+        # 使用 current_database() 函数获取当前数据库名
+        sql_parts.append("DO $$")
+        sql_parts.append("BEGIN")
+        sql_parts.append("    EXECUTE 'ALTER DATABASE ' || current_database() || ' SET anon.enable_dynamic_masking = true;';")
+        sql_parts.append("END $$;")
         sql_parts.append("")
 
         sql_parts.append("-- 使用说明:")

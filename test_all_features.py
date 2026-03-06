@@ -600,63 +600,181 @@ class DataMaskingTest:
 
     # ==================== 动态脱敏测试 ====================
     def test_dynamic_masking(self):
-        """测试动态脱敏 API"""
+        """测试动态脱敏 API（含数据库验证）"""
         print("\n[11] 动态脱敏测试")
 
         if not self.test_datasource_id:
             self.result.fail("没有可用的数据源进行动态脱敏测试")
             return False
 
-        # 创建动态脱敏规则 - 使用 camelCase 格式
-        resp = self.request('POST', '/dynamic-masking/rules', json={
-            "ruleName": f"测试动态脱敏规则_{self.test_table_prefix}",
-            "datasourceId": self.test_datasource_id,
-            "schemaName": "public",
-            "tableName": f"{self.test_table_prefix}_test",
-            "maskedRoles": ["analyst", "viewer"],
-            "exemptedRoles": ["admin"],
-            "description": "自动化测试动态脱敏规则"
-        })
+        try:
+            import psycopg2
 
-        if resp.get('code') == 0:
-            rule_id = resp['data']['id']
-            self.result.success(f"创建动态脱敏规则成功, ID: {rule_id}")
+            # 获取数据源连接信息
+            resp = self.request('GET', f'/datasources/{self.test_datasource_id}')
+            if resp.get('code') != 0:
+                self.result.fail("无法获取数据源详情")
+                return False
 
-            # 获取规则列表
-            list_resp = self.request('GET', '/dynamic-masking/rules', params={"page": 1, "page_size": 10})
-            if list_resp.get('code') == 0:
-                total = list_resp['data'].get('total', 0)
-                self.result.success(f"获取动态脱敏规则列表成功，共 {total} 条")
+            ds = resp['data']
+            conn = psycopg2.connect(
+                host=ds.get('host', 'localhost'),
+                port=ds.get('port', 5432),
+                database=ds.get('databaseName', 'postgres'),
+                user=ds.get('username', 'postgres'),
+                password=ds.get('password', '')
+            )
+            conn.autocommit = True
+            cursor = conn.cursor()
 
-            # 添加字段规则 - 使用 camelCase 格式
-            col_resp = self.request('POST', f'/dynamic-masking/rules/{rule_id}/columns', json={
-                "columnName": "name",
-                "maskingAlgorithm": "anon.partial",
-                "algorithmParams": {"show_first": 2, "show_last": 2}
+            # 获取数据库中实际存在的角色
+            cursor.execute("SELECT rolname FROM pg_roles WHERE rolname NOT LIKE 'pg_%' AND rolname NOT LIKE 'gp_%'")
+            existing_roles = [row[0] for row in cursor.fetchall()]
+            self.result.success(f"数据库中存在的角色: {existing_roles}")
+
+            # 选择一个实际存在的角色用于测试（优先使用 analyst，其次 user_anon）
+            masked_role = None
+            for role in ['analyst', 'user_anon']:
+                if role in existing_roles:
+                    masked_role = role
+                    break
+
+            if not masked_role:
+                masked_role = existing_roles[0] if existing_roles else 'analyst'
+                self.result.success(f"使用角色: {masked_role}")
+
+            # 创建测试表
+            test_table = f"{self.test_table_prefix}_dynamic_mask_test"
+            cursor.execute(f"DROP TABLE IF EXISTS public.{test_table}")
+
+            create_sql = f"""
+            CREATE TABLE public.{test_table} (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(100),
+                email VARCHAR(100),
+                phone VARCHAR(20)
+            )
+            """
+            cursor.execute(create_sql)
+
+            # 插入测试数据
+            insert_sql = f"""
+            INSERT INTO public.{test_table} (name, email, phone) VALUES
+            ('张三', 'zhangsan@example.com', '13812345678'),
+            ('李四', 'lisi@example.com', '13987654321')
+            """
+            cursor.execute(insert_sql)
+
+            self.result.success(f"创建测试表成功: {test_table}")
+
+            # 创建动态脱敏规则 - 使用数据库中实际存在的角色
+            resp = self.request('POST', '/dynamic-masking/rules', json={
+                "ruleName": f"测试动态脱敏规则_{self.test_table_prefix}",
+                "datasourceId": self.test_datasource_id,
+                "schemaName": "public",
+                "tableName": test_table,
+                "maskedRoles": [masked_role],  # 使用实际存在的角色
+                "exemptedRoles": ["admin"] if "admin" in existing_roles else [],
+                "description": "自动化测试动态脱敏规则"
             })
-            if col_resp.get('code') == 0:
-                self.result.success("添加字段规则成功")
-            else:
-                self.result.fail(f"添加字段规则失败: {col_resp.get('message')}")
 
-            # 预览 SQL
-            preview_resp = self.request('GET', f'/dynamic-masking/rules/{rule_id}/preview-sql')
-            if preview_resp.get('code') == 0:
-                sql = preview_resp['data'].get('sql', '')
-                self.result.success(f"预览SQL成功, 长度: {len(sql)}")
-            else:
-                self.result.fail(f"预览SQL失败: {preview_resp.get('message')}")
+            if resp.get('code') == 0:
+                rule_id = resp['data']['id']
+                self.result.success(f"创建动态脱敏规则成功, ID: {rule_id}")
 
-            # 删除规则
-            del_resp = self.request('DELETE', f'/dynamic-masking/rules/{rule_id}')
-            if del_resp.get('code') == 0:
-                self.result.success("删除动态脱敏规则成功")
+                # 获取规则列表
+                list_resp = self.request('GET', '/dynamic-masking/rules', params={"page": 1, "page_size": 10})
+                if list_resp.get('code') == 0:
+                    total = list_resp['data'].get('total', 0)
+                    self.result.success(f"获取动态脱敏规则列表成功，共 {total} 条")
+
+                # 获取表的列信息
+                cursor.execute(f"""
+                    SELECT column_name FROM information_schema.columns
+                    WHERE table_schema = 'public' AND table_name = '{test_table}'
+                """)
+                columns = [row[0] for row in cursor.fetchall() if row[0] != 'id']
+
+                # 添加字段规则 - 使用实际存在的列
+                if columns:
+                    col_name = columns[0]  # 使用第一个非 id 列
+                    col_resp = self.request('POST', f'/dynamic-masking/rules/{rule_id}/columns', json={
+                        "columnName": col_name,
+                        "maskingAlgorithm": "anon.partial",
+                        "algorithmParams": {"show_first": 2, "show_last": 2}
+                    })
+                    if col_resp.get('code') == 0:
+                        self.result.success(f"添加字段规则成功: {col_name}")
+                    else:
+                        self.result.fail(f"添加字段规则失败: {col_resp.get('message')}")
+
+                # 预览 SQL
+                preview_resp = self.request('GET', f'/dynamic-masking/rules/{rule_id}/preview-sql')
+                if preview_resp.get('code') == 0:
+                    sql = preview_resp['data'].get('sql', '')
+                    self.result.success(f"预览SQL成功, 长度: {len(sql)}")
+                    # 检查 SQL 中是否还有 CURRENT_DATABASE 错误
+                    if 'CURRENT_DATABASE' in sql and 'current_database()' not in sql.lower():
+                        self.result.fail("SQL 中包含错误的 CURRENT_DATABASE 语法")
+                    else:
+                        self.result.success("SQL 语法检查通过")
+                else:
+                    self.result.fail(f"预览SQL失败: {preview_resp.get('message')}")
+
+                # 尝试启用规则
+                enable_resp = self.request('POST', f'/dynamic-masking/rules/{rule_id}/enable')
+                if enable_resp.get('code') == 0:
+                    self.result.success("启用动态脱敏规则成功")
+
+                    # 禁用规则
+                    disable_resp = self.request('POST', f'/dynamic-masking/rules/{rule_id}/disable')
+                    if disable_resp.get('code') == 0:
+                        self.result.success("禁用动态脱敏规则成功")
+                    else:
+                        self.result.fail(f"禁用规则失败: {disable_resp.get('message')}")
+                else:
+                    error_msg = enable_resp.get('message', '未知错误')
+                    self.result.fail(f"启用动态脱敏规则失败: {error_msg}")
+                    # 记录详细错误信息
+                    if enable_resp.get('data', {}).get('error'):
+                        print(f"    详细错误: {enable_resp['data']['error']}")
+
+                # 删除规则
+                del_resp = self.request('DELETE', f'/dynamic-masking/rules/{rule_id}')
+                if del_resp.get('code') == 0:
+                    self.result.success("删除动态脱敏规则成功")
+                else:
+                    self.result.fail(f"删除动态脱敏规则失败: {del_resp.get('message')}")
             else:
-                self.result.fail(f"删除动态脱敏规则失败: {del_resp.get('message')}")
-        else:
-            self.result.fail(f"创建动态脱敏规则失败: {resp.get('message')}")
+                self.result.fail(f"创建动态脱敏规则失败: {resp.get('message')}")
+
+            # 清理测试数据
+            cursor.execute(f"DROP TABLE IF EXISTS public.{test_table}")
+            self.result.success("清理测试数据成功")
+
+            cursor.close()
+            conn.close()
+
+        except ImportError:
+            self.result.fail("psycopg2 未安装，跳过动态脱敏验证测试")
+            # 回退到简单的 API 测试
+            self._test_dynamic_masking_api_only()
+        except Exception as e:
+            self.result.fail(f"动态脱敏测试异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
         return True
+
+    def _test_dynamic_masking_api_only(self):
+        """仅测试动态脱敏 API（不验证数据库）"""
+        print("    执行简化 API 测试...")
+
+        # 获取规则列表
+        list_resp = self.request('GET', '/dynamic-masking/rules', params={"page": 1, "page_size": 10})
+        if list_resp.get('code') == 0:
+            total = list_resp['data'].get('total', 0)
+            self.result.success(f"获取动态脱敏规则列表成功，共 {total} 条")
 
     # ==================== 匿名化测试 ====================
     def test_anonymization(self):

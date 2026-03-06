@@ -887,8 +887,9 @@ async function handleColumnModalOk() {
       message.success('Added successfully')
     }
     columnModalVisible.value = false
-    loadTask()
-    // Refresh columns in drawer
+    // Refresh task data and update columns list
+    await loadTask()
+    // Update columns in drawer from refreshed data
     if (currentTable.value) {
       const updatedTable = tables.value.find(t => t.id === currentTable.value.id)
       if (updatedTable) {
@@ -904,7 +905,14 @@ async function deleteColumn(id: number) {
   try {
     await request.delete(`/masking/columns/${id}`)
     message.success('Deleted successfully')
-    loadTask()
+    await loadTask()
+    // Update columns in drawer from refreshed data
+    if (currentTable.value) {
+      const updatedTable = tables.value.find(t => t.id === currentTable.value.id)
+      if (updatedTable) {
+        columns.value = updatedTable.columns || []
+      }
+    }
   } catch (error) {
     //
   }

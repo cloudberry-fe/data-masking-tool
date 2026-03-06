@@ -63,6 +63,9 @@
             <a-button type="link" size="small" @click="goToDetail(record)">
               {{ t('masking.tableConfig') }}
             </a-button>
+            <a-button type="link" size="small" @click="showExecutionsModal(record)">
+              {{ t('masking.executionHistory') }}
+            </a-button>
             <a-popconfirm
               v-if="record.status !== 'RUNNING'"
               :title="t('messages.executeConfirm')"
@@ -186,6 +189,43 @@
         </a-form-item>
       </a-form>
     </a-modal>
+
+    <!-- Execution History Modal -->
+    <a-modal
+      :title="t('masking.executionHistory')"
+      v-model:open="executionsModalVisible"
+      :footer="null"
+      width="800px"
+    >
+      <a-table
+        :columns="executionColumns"
+        :data-source="executions"
+        :loading="loadingExecutions"
+        :pagination="false"
+        row-key="id"
+        size="small"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'status'">
+            <a-tag :color="getExecutionStatusColor(record.status)">
+              {{ getExecutionStatusText(record.status) }}
+            </a-tag>
+          </template>
+          <template v-if="column.key === 'duration'">
+            <span v-if="record.startTime && record.endTime">
+              {{ formatDuration(record.startTime, record.endTime) }}
+            </span>
+            <span v-else>-</span>
+          </template>
+          <template v-if="column.key === 'records'">
+            <span v-if="record.successRecords !== undefined">
+              {{ record.successRecords }} / {{ record.totalRecords || 0 }}
+            </span>
+            <span v-else>-</span>
+          </template>
+        </template>
+      </a-table>
+    </a-modal>
   </div>
 </template>
 
@@ -205,6 +245,12 @@ const modalVisible = ref(false)
 const modalLoading = ref(false)
 const isEdit = ref(false)
 const formRef = ref()
+
+// Execution history
+const executionsModalVisible = ref(false)
+const loadingExecutions = ref(false)
+const executions = ref<any[]>([])
+const currentTaskId = ref<number | null>(null)
 
 const dataSource = ref<any[]>([])
 const datasourceList = ref<any[]>([])
@@ -240,8 +286,16 @@ const columns = computed(() => [
   { title: t('masking.executionHistory'), key: 'lastExecution', width: 120 },
   { title: t('masking.scheduleType'), key: 'scheduleType', width: 100 },
   { title: t('common.createdAt'), dataIndex: 'createdAt', key: 'createdAt' },
-  { title: t('common.actions'), key: 'actions', width: 280, fixed: 'right' as const }
+  { title: t('common.actions'), key: 'actions', width: 320, fixed: 'right' as const }
 ])
+
+const executionColumns = [
+  { title: 'ID', dataIndex: 'executionNo', key: 'executionNo', width: 150 },
+  { title: t('common.status'), key: 'status', width: 100 },
+  { title: t('masking.records'), key: 'records', width: 100 },
+  { title: t('masking.duration'), key: 'duration', width: 100 },
+  { title: t('common.createdAt'), dataIndex: 'startTime', key: 'startTime', width: 160 }
+]
 
 async function loadDatasources() {
   try {
@@ -438,9 +492,9 @@ function getStatusColor(status: string): string {
 function getStatusText(status: string): string {
   const { locale } = useI18n()
   const texts: Record<string, Record<string, string>> = {
-    DRAFT: { en: 'Draft', zh: '草稿' },
+    DRAFT: { en: 'Configuring', zh: '配置中' },
     READY: { en: 'Ready', zh: '就绪' },
-    RUNNING: { en: 'Running', zh: '运行中' },
+    RUNNING: { en: 'Running', zh: '执行中' },
     PAUSED: { en: 'Paused', zh: '已暂停' },
     SUCCESS: { en: 'Success', zh: '成功' },
     FAILED: { en: 'Failed', zh: '失败' }
@@ -484,6 +538,34 @@ function getExecutionStatusText(status: string): string {
     PENDING: { en: 'Pending', zh: '待执行' }
   }
   return texts[status]?.[locale.value] || status
+}
+
+async function showExecutionsModal(record: any) {
+  currentTaskId.value = record.id
+  executionsModalVisible.value = true
+  loadingExecutions.value = true
+
+  try {
+    const data = await request.get(`/masking/tasks/${record.id}/executions`, {
+      params: { page: 1, page_size: 20 }
+    })
+    executions.value = data.items || []
+  } catch (error) {
+    executions.value = []
+  } finally {
+    loadingExecutions.value = false
+  }
+}
+
+function formatDuration(start: string, end: string): string {
+  if (!start || !end) return '-'
+  const startTime = new Date(start).getTime()
+  const endTime = new Date(end).getTime()
+  const diff = Math.floor((endTime - startTime) / 1000)
+
+  if (diff < 60) return `${diff}秒`
+  if (diff < 3600) return `${Math.floor(diff / 60)}分${diff % 60}秒`
+  return `${Math.floor(diff / 3600)}时${Math.floor((diff % 3600) / 60)}分`
 }
 
 onMounted(() => {

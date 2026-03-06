@@ -139,7 +139,7 @@
           <a-input v-model:value="formState.ruleName" :placeholder="t('common.pleaseInput')" />
         </a-form-item>
         <a-form-item :label="t('datasource.title')" name="datasourceId" :rules="[{ required: true, message: t('common.pleaseSelect') }]">
-          <a-select v-model:value="formState.datasourceId" :placeholder="t('common.pleaseSelect')" show-search :disabled="isEdit" @change="onFormDatasourceChange">
+          <a-select v-model:value="formState.datasourceId" :placeholder="t('common.pleaseSelect')" show-search @change="onFormDatasourceChange">
             <a-select-option v-for="ds in datasourceList" :key="ds.id" :value="ds.id">
               {{ ds.datasourceName }}
             </a-select-option>
@@ -150,7 +150,7 @@
             v-model:value="formState.schemaName"
             :placeholder="t('common.pleaseSelect')"
             :loading="loadingSchemas"
-            :disabled="isEdit || !formState.datasourceId"
+            :disabled="!formState.datasourceId"
             show-search
             allow-clear
             @change="onFormSchemaChange"
@@ -165,7 +165,7 @@
             v-model:value="formState.tableName"
             :placeholder="t('common.pleaseSelect')"
             :loading="loadingTables"
-            :disabled="isEdit || !formState.datasourceId"
+            :disabled="!formState.datasourceId"
             show-search
             allow-clear
             @focus="loadTablesForForm"
@@ -793,10 +793,10 @@ function getStatusColor(status: string): string {
 
 function getStatusText(status: string): string {
   const texts: Record<string, Record<string, string>> = {
-    DRAFT: { en: 'Draft', zh: '草稿' },
-    ACTIVE: { en: 'Active', zh: '已激活' },
-    INACTIVE: { en: 'Inactive', zh: '未激活' },
-    ERROR: { en: 'Error', zh: '错误' }
+    DRAFT: { en: 'Configuring', zh: '配置中' },
+    ACTIVE: { en: 'Active', zh: '已启用' },
+    INACTIVE: { en: 'Disabled', zh: '已禁用' },
+    ERROR: { en: 'Error', zh: '配置错误' }
   }
   return texts[status]?.[locale.value] || status
 }

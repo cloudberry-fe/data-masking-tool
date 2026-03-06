@@ -63,6 +63,8 @@ class UpdateDynamicRuleRequest(BaseModel):
     """更新动态脱敏规则请求"""
     rule_name: Optional[str] = Field(default=None, description="规则名称")
     ruleName: Optional[str] = Field(default=None, description="规则名称 (camelCase)")
+    datasource_id: Optional[int] = Field(default=None, description="数据源ID (snake_case)")
+    datasourceId: Optional[int] = Field(default=None, description="数据源ID (camelCase)")
     schema_name: Optional[str] = Field(default=None, description="Schema名")
     schemaName: Optional[str] = Field(default=None, description="Schema名 (camelCase)")
     table_name: Optional[str] = Field(default=None, description="表名")
@@ -72,6 +74,9 @@ class UpdateDynamicRuleRequest(BaseModel):
     exempted_roles: Optional[List[str]] = Field(default=None, description="豁免角色列表")
     exemptedRoles: Optional[List[str]] = Field(default=None, description="豁免角色列表 (camelCase)")
     description: Optional[str] = Field(default=None, description="描述")
+
+    def get_datasource_id(self) -> Optional[int]:
+        return self.datasource_id or self.datasourceId
 
 
 class AddColumnRuleRequest(BaseModel):
@@ -231,23 +236,43 @@ def update_dynamic_rule(
     audit: AuditLogger,
 ):
     """更新动态脱敏规则"""
-    from app.models.dynamic_masking import DynamicMaskingRule
+    from app.models.dynamic_masking import DynamicMaskingRule, DynamicMaskingColumnRule
 
     rule = db.get(DynamicMaskingRule, rule_id)
     if not rule:
         raise HTTPException(status_code=404, detail="规则不存在")
 
-    # 只有 DRAFT 状态才能修改
+    # 只有 DRAFT/INACTIVE 状态才能修改
     if rule.status not in ("DRAFT", "INACTIVE"):
         raise HTTPException(status_code=400, detail="已启用的规则不能修改，请先禁用")
 
-    # 更新字段
+    # 检查是否修改了数据源、Schema 或表
+    table_changed = False
+    new_datasource_id = request.get_datasource_id()
+    new_schema = request.schema_name or request.schemaName
+    new_table = request.table_name or request.tableName
+
+    if new_datasource_id and new_datasource_id != rule.datasource_id:
+        table_changed = True
+        rule.datasource_id = new_datasource_id
+    if new_schema and new_schema != rule.schema_name:
+        table_changed = True
+        rule.schema_name = new_schema
+    if new_table and new_table != rule.table_name:
+        table_changed = True
+        rule.table_name = new_table
+
+    # 如果表变化了，清除之前的字段规则
+    if table_changed and rule.column_rules:
+        # 删除所有字段规则
+        for col_rule in rule.column_rules:
+            db.delete(col_rule)
+        rule.column_rules = []
+        logger.info(f"表已更改，清除规则 {rule_id} 的字段配置")
+
+    # 更新其他字段
     if request.rule_name or request.ruleName:
         rule.rule_name = request.rule_name or request.ruleName
-    if request.schema_name or request.schemaName:
-        rule.schema_name = request.schema_name or request.schemaName
-    if request.table_name or request.tableName:
-        rule.table_name = request.table_name or request.tableName
     if request.masked_roles or request.maskedRoles:
         rule.masked_roles = request.masked_roles or request.maskedRoles
     if request.exempted_roles or request.exemptedRoles:
@@ -266,7 +291,7 @@ def update_dynamic_rule(
     return Response(data={
         "id": rule.id,
         "ruleName": rule.rule_name,
-        "message": "更新成功"
+        "message": "更新成功" + ("，已清除字段配置，请重新配置" if table_changed else "")
     })
 
 

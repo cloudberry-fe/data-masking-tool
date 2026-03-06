@@ -26,6 +26,7 @@ export default {
     pleaseInput: 'Please input',
     logout: 'Logout',
     dashboard: 'Dashboard',
+    dataConfig: 'Data Config',
   },
   menu: {
     dashboard: 'Dashboard',

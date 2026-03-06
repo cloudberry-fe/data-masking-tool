@@ -80,10 +80,7 @@
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="showDetailModal(record)">
-              {{ t('anonymization.configure') }}
-            </a-button>
-            <a-button type="link" size="small" @click="showEditModal(record)" v-if="record.status === 'DRAFT'">
-              {{ t('common.edit') }}
+              {{ t('common.dataConfig') }}
             </a-button>
             <a-button type="link" size="small" @click="showPreviewSql(record)">
               {{ t('dynamicMasking.previewSQL') }}
@@ -100,6 +97,9 @@
                 {{ t('masking.execute') }}
               </a-button>
             </a-popconfirm>
+            <a-button type="link" size="small" @click="showEditModal(record)" v-if="record.status === 'DRAFT'">
+              {{ t('common.edit') }}
+            </a-button>
             <a-popconfirm
               v-if="record.status === 'DRAFT'"
               :title="t('messages.deleteConfirm')"

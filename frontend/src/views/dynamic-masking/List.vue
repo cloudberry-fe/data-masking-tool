@@ -81,10 +81,10 @@
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="showDetailModal(record)">
-              {{ t('dynamicMasking.configure') }}
+              {{ t('common.dataConfig') }}
             </a-button>
-            <a-button type="link" size="small" @click="showEditModal(record)" v-if="!record.isEnabled">
-              {{ t('common.edit') }}
+            <a-button type="link" size="small" @click="showPreviewSql(record)">
+              {{ t('dynamicMasking.previewSQL') }}
             </a-button>
             <a-popconfirm
               v-if="!record.isEnabled"
@@ -104,8 +104,8 @@
                 {{ t('dynamicMasking.disableRule') }}
               </a-button>
             </a-popconfirm>
-            <a-button type="link" size="small" @click="showPreviewSql(record)">
-              {{ t('dynamicMasking.previewSQL') }}
+            <a-button type="link" size="small" @click="showEditModal(record)" v-if="!record.isEnabled">
+              {{ t('common.edit') }}
             </a-button>
             <a-popconfirm
               v-if="!record.isEnabled"

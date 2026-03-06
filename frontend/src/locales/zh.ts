@@ -26,6 +26,7 @@ export default {
     pleaseInput: '请输入',
     logout: '退出登录',
     dashboard: '首页',
+    dataConfig: '数据配置',
   },
   menu: {
     dashboard: '首页',

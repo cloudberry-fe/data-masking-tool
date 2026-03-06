@@ -43,11 +43,11 @@
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
-            <a-button size="small" @click="showConfigModal(record)">
-              {{ t('testData.config') }}
+            <a-button type="link" size="small" @click="showConfigModal(record)">
+              {{ t('common.dataConfig') }}
             </a-button>
-            <a-button type="primary" size="small" @click="analyzeTask(record)">
-              {{ t('testData.analyze') }}
+            <a-button type="link" size="small" @click="showExecutionsModal(record)">
+              {{ t('masking.executionHistory') }}
             </a-button>
             <a-popconfirm :title="t('messages.executeConfirm')" @confirm="executeTask(record)">
               <a-button type="primary" size="small">
@@ -287,6 +287,43 @@
         </a-space>
       </template>
     </a-drawer>
+
+    <!-- Execution History Modal -->
+    <a-modal
+      :title="t('masking.executionHistory')"
+      v-model:open="executionsModalVisible"
+      :footer="null"
+      width="800px"
+    >
+      <a-table
+        :columns="executionColumns"
+        :data-source="executions"
+        :loading="loadingExecutions"
+        :pagination="false"
+        row-key="id"
+        size="small"
+      >
+        <template #bodyCell="{ column, record }">
+          <template v-if="column.key === 'status'">
+            <a-tag :color="getExecutionStatusColor(record.status)">
+              {{ getExecutionStatusText(record.status) }}
+            </a-tag>
+          </template>
+          <template v-if="column.key === 'duration'">
+            <span v-if="record.startTime && record.endTime">
+              {{ formatDuration(record.startTime, record.endTime) }}
+            </span>
+            <span v-else>-</span>
+          </template>
+          <template v-if="column.key === 'records'">
+            <span v-if="record.successRecords !== undefined">
+              {{ record.successRecords }} / {{ record.totalRecords || 0 }}
+            </span>
+            <span v-else>-</span>
+          </template>
+        </template>
+      </a-table>
+    </a-modal>
   </div>
 </template>
 
@@ -356,6 +393,18 @@ const currentTableColumns = ref<any[]>([])
 const loadingColumns = ref(false)
 const previewLoading = ref(false)
 const previewDataResult = ref<any>(null)
+
+// Execution history
+const executionsModalVisible = ref(false)
+const loadingExecutions = ref(false)
+const executions = ref<any[]>([])
+const executionColumns = [
+  { title: 'ID', dataIndex: 'executionNo', key: 'executionNo', width: 150 },
+  { title: t('common.status'), key: 'status', width: 100 },
+  { title: t('masking.records'), key: 'records', width: 100 },
+  { title: t('masking.duration'), key: 'duration', width: 100 },
+  { title: t('common.createdAt'), dataIndex: 'startTime', key: 'startTime', width: 160 }
+]
 
 const columns = computed(() => [
   { title: t('testData.taskName'), dataIndex: 'taskName', key: 'taskName' },
@@ -815,6 +864,54 @@ async function deleteTask(id: number) {
     const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '删除失败'
     message.error(errorMsg)
   }
+}
+
+async function showExecutionsModal(record: any) {
+  executionsModalVisible.value = true
+  loadingExecutions.value = true
+  executions.value = []
+
+  try {
+    const data = await request.get('/test-data/executions', {
+      params: { task_id: record.id, page: 1, page_size: 20 }
+    })
+    executions.value = data.items || []
+  } catch (error) {
+    executions.value = []
+  } finally {
+    loadingExecutions.value = false
+  }
+}
+
+function getExecutionStatusColor(status: string): string {
+  const colors: Record<string, string> = {
+    SUCCESS: 'success',
+    FAILED: 'error',
+    RUNNING: 'processing',
+    PENDING: 'default'
+  }
+  return colors[status] || 'default'
+}
+
+function getExecutionStatusText(status: string): string {
+  const texts: Record<string, Record<string, string>> = {
+    SUCCESS: { en: 'Success', zh: '成功' },
+    FAILED: { en: 'Failed', zh: '失败' },
+    RUNNING: { en: 'Running', zh: '执行中' },
+    PENDING: { en: 'Pending', zh: '等待中' }
+  }
+  return texts[status]?.[locale.value] || status
+}
+
+function formatDuration(start: string, end: string): string {
+  if (!start || !end) return '-'
+  const startTime = new Date(start).getTime()
+  const endTime = new Date(end).getTime()
+  const diff = Math.floor((endTime - startTime) / 1000)
+
+  if (diff < 60) return `${diff}秒`
+  if (diff < 3600) return `${Math.floor(diff / 60)}分${diff % 60}秒`
+  return `${Math.floor(diff / 3600)}时${Math.floor((diff % 3600) / 60)}分`
 }
 
 function getStatusColor(status: string): string {

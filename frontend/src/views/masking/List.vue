@@ -61,7 +61,10 @@
         <template v-if="column.key === 'actions'">
           <a-space>
             <a-button type="link" size="small" @click="goToDetail(record)">
-              {{ t('masking.tableConfig') }}
+              {{ t('common.dataConfig') }}
+            </a-button>
+            <a-button type="link" size="small" @click="showPreviewSql(record)">
+              {{ t('dynamicMasking.previewSQL') }}
             </a-button>
             <a-button type="link" size="small" @click="showExecutionsModal(record)">
               {{ t('masking.executionHistory') }}
@@ -226,6 +229,18 @@
         </template>
       </a-table>
     </a-modal>
+
+    <!-- SQL Preview Modal -->
+    <a-modal
+      :title="t('dynamicMasking.previewSQL')"
+      v-model:open="sqlPreviewModalVisible"
+      :footer="null"
+      width="800px"
+    >
+      <a-spin :spinning="loadingSqlPreview">
+        <pre style="max-height: 500px; overflow: auto; background: #f5f5f5; padding: 16px; border-radius: 4px; white-space: pre-wrap; word-break: break-all;">{{ sqlPreviewContent }}</pre>
+      </a-spin>
+    </a-modal>
   </div>
 </template>
 
@@ -251,6 +266,11 @@ const executionsModalVisible = ref(false)
 const loadingExecutions = ref(false)
 const executions = ref<any[]>([])
 const currentTaskId = ref<number | null>(null)
+
+// SQL Preview
+const sqlPreviewModalVisible = ref(false)
+const loadingSqlPreview = ref(false)
+const sqlPreviewContent = ref('')
 
 const dataSource = ref<any[]>([])
 const datasourceList = ref<any[]>([])
@@ -286,7 +306,7 @@ const columns = computed(() => [
   { title: t('masking.executionHistory'), key: 'lastExecution', width: 120 },
   { title: t('masking.scheduleType'), key: 'scheduleType', width: 100 },
   { title: t('common.createdAt'), dataIndex: 'createdAt', key: 'createdAt' },
-  { title: t('common.actions'), key: 'actions', width: 320, fixed: 'right' as const }
+  { title: t('common.actions'), key: 'actions', width: 380, fixed: 'right' as const }
 ])
 
 const executionColumns = [
@@ -566,6 +586,21 @@ function formatDuration(start: string, end: string): string {
   if (diff < 60) return `${diff}秒`
   if (diff < 3600) return `${Math.floor(diff / 60)}分${diff % 60}秒`
   return `${Math.floor(diff / 3600)}时${Math.floor((diff % 3600) / 60)}分`
+}
+
+async function showPreviewSql(record: any) {
+  sqlPreviewModalVisible.value = true
+  loadingSqlPreview.value = true
+  sqlPreviewContent.value = ''
+
+  try {
+    const data = await request.post(`/masking/tasks/${record.id}/generate-sql`)
+    sqlPreviewContent.value = data.sql || '-- No SQL generated --'
+  } catch (error: any) {
+    sqlPreviewContent.value = `-- Error: ${error?.message || 'Failed to generate SQL'}`
+  } finally {
+    loadingSqlPreview.value = false
+  }
 }
 
 onMounted(() => {

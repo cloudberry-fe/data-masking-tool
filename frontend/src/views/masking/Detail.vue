@@ -108,10 +108,6 @@
       width="650px"
     >
       <a-form ref="tableFormRef" :model="tableFormState" :label-col="{ span: 7 }">
-        <a-form-item label="Table Name" name="tableName" :rules="[{ required: true }]">
-          <a-input v-model:value="tableFormState.tableName" placeholder="Display name for this configuration" />
-        </a-form-item>
-
         <a-divider>Source Table</a-divider>
         <a-form-item label="Source Schema" name="sourceSchema">
           <a-select
@@ -120,6 +116,7 @@
             show-search
             allow-clear
             :loading="loadingSchemas"
+            @change="onSourceSchemaChange"
           >
             <a-select-option v-for="schema in schemaList" :key="schema" :value="schema">
               {{ schema }}
@@ -133,6 +130,7 @@
             show-search
             :loading="loadingTables"
             @focus="loadTablesForSchema('source')"
+            @change="onSourceTableChange"
           >
             <a-select-option v-for="table in sourceTableList" :key="table" :value="table">
               {{ table }}
@@ -158,6 +156,13 @@
           <a-input v-model:value="tableFormState.targetTable" placeholder="Target table name (e.g., users_masked)" />
         </a-form-item>
 
+        <a-divider>Options</a-divider>
+        <a-form-item label="Config Name" name="tableName">
+          <a-input v-model:value="tableFormState.tableName" placeholder="Optional: custom name for this configuration" />
+          <div style="color: #999; font-size: 12px; margin-top: 4px">
+            Optional identifier. If empty, source table name will be used.
+          </div>
+        </a-form-item>
         <a-form-item label="Order" name="orderNo">
           <a-input-number v-model:value="tableFormState.orderNo" style="width: 100%" min="0" />
         </a-form-item>
@@ -559,7 +564,7 @@ const executionDetailVisible = ref(false)
 const selectedExecution = ref<any>(null)
 
 const tableColumns = [
-  { title: 'Table Name', dataIndex: 'tableName', key: 'tableName' },
+  { title: 'Config Name', dataIndex: 'tableName', key: 'tableName' },
   { title: 'Source Table', dataIndex: 'sourceTable', key: 'sourceTable' },
   { title: 'Target Table', dataIndex: 'targetTable', key: 'targetTable' },
   { title: 'Order', dataIndex: 'orderNo', key: 'orderNo', width: 80 },
@@ -757,6 +762,24 @@ async function loadTablesForSchema(type: 'source' | 'target') {
   }
 }
 
+// When source schema changes, reset table selection
+function onSourceSchemaChange() {
+  tableFormState.sourceTable = undefined
+  sourceTableList.value = []
+}
+
+// When source table changes, auto-fill config name and target table
+function onSourceTableChange(value: string) {
+  // Auto-fill config name if empty
+  if (!tableFormState.tableName && value) {
+    tableFormState.tableName = value
+  }
+  // Auto-fill target table name with "_masked" suffix
+  if (!tableFormState.targetTable && value) {
+    tableFormState.targetTable = `${value}_masked`
+  }
+}
+
 async function handleTableModalOk() {
   try {
     // Build full table names with schema prefix
@@ -768,8 +791,12 @@ async function handleTableModalOk() {
       ? `${tableFormState.targetSchema}.${tableFormState.targetTable}`
       : tableFormState.targetTable
 
+    // If tableName is empty, use source table name
+    const tableName = tableFormState.tableName || tableFormState.sourceTable
+
     const payload = {
       ...tableFormState,
+      tableName,
       sourceTable: fullSourceTable,
       targetTable: fullTargetTable
     }

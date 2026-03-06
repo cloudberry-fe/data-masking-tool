@@ -564,6 +564,12 @@ def enable_dynamic_rule(
         rule.status = "ERROR"
         db.commit()
 
+        # 记录审计日志（失败）
+        audit("EXECUTE", "dynamic_masking",
+              f"启用动态脱敏规则失败: {rule.rule_name}",
+              response_result="FAIL",
+              error_message=error_detail)
+
         if conn:
             conn.rollback()
 

@@ -59,6 +59,14 @@
               {{ record.responseResult === 'SUCCESS' ? 'Success' : 'Failed' }}
             </a-tag>
           </template>
+          <template v-if="column.key === 'errorMessage'">
+            <template v-if="record.errorMessage">
+              <a-tooltip :title="record.errorMessage">
+                <span style="color: #ff4d4f" class="truncate">{{ record.errorMessage }}</span>
+              </a-tooltip>
+            </template>
+            <span v-else style="color: #999">-</span>
+          </template>
           <template v-if="column.key === 'operationDesc'">
             <a-tooltip :title="record.operationDesc">
               <span class="truncate">{{ record.operationDesc }}</span>
@@ -158,14 +166,15 @@ const pagination = reactive({
 
 const columns = [
   { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-  { title: 'Username', dataIndex: 'username', key: 'username', width: 120 },
+  { title: 'Username', dataIndex: 'username', key: 'username', width: 100 },
   { title: 'Operation Type', dataIndex: 'operationType', key: 'operationType', width: 100 },
-  { title: 'Module', dataIndex: 'operationModule', key: 'operationModule', width: 120 },
-  { title: 'Description', key: 'operationDesc', width: 200 },
-  { title: 'Request URL', key: 'requestUrl', width: 200 },
+  { title: 'Module', dataIndex: 'operationModule', key: 'operationModule', width: 100 },
+  { title: 'Description', key: 'operationDesc', width: 180 },
+  { title: 'Request URL', key: 'requestUrl', width: 180 },
   { title: 'Result', key: 'responseResult', width: 80 },
-  { title: 'IP Address', dataIndex: 'ipAddress', key: 'ipAddress', width: 120 },
-  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt', width: 180 },
+  { title: 'Error', key: 'errorMessage', width: 200 },
+  { title: 'IP Address', dataIndex: 'ipAddress', key: 'ipAddress', width: 100 },
+  { title: 'Created At', dataIndex: 'createdAt', key: 'createdAt', width: 160 },
   { title: 'Actions', key: 'actions', width: 80, fixed: 'right' as const }
 ]
 

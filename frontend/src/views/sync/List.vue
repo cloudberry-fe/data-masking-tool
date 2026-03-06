@@ -771,9 +771,10 @@ async function analyzeTask(record: any) {
       }
       loadData()
     }
-  } catch (error) {
+  } catch (error: any) {
     message.destroy()
-    message.error(t('testData.analyzeFailed'))
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || t('testData.analyzeFailed')
+    message.error(errorMsg, 5)
   }
 }
 
@@ -786,8 +787,9 @@ async function previewData() {
       params: { rows: 10 }
     })
     previewDataResult.value = result
-  } catch (error) {
-    message.error(t('testData.previewFailed'))
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || t('testData.previewFailed')
+    message.error(errorMsg)
   } finally {
     previewLoading.value = false
   }
@@ -798,8 +800,9 @@ async function executeTask(record: any) {
     await request.post(`/test-data/tasks/${record.id}/execute`)
     message.success(t('messages.executeSuccess'))
     loadData()
-  } catch (error) {
-    //
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '执行失败'
+    message.error(errorMsg, 5)
   }
 }
 
@@ -808,8 +811,9 @@ async function deleteTask(id: number) {
     await request.delete(`/test-data/tasks/${id}`)
     message.success(t('messages.deleteSuccess'))
     loadData()
-  } catch (error) {
-    //
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '删除失败'
+    message.error(errorMsg)
   }
 }
 

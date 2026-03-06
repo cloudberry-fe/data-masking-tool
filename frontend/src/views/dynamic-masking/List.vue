@@ -738,8 +738,9 @@ async function enableRule(record: any) {
     }
     loadData()
   } catch (error: any) {
-    const errorMsg = error?.response?.data?.message || error?.message || '启用失败'
-    message.error(errorMsg)
+    // 处理 FastAPI HTTPException 返回的 detail 字段
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '启用失败'
+    message.error(errorMsg, 5)  // 显示5秒让用户有时间阅读
   }
 }
 
@@ -753,8 +754,8 @@ async function disableRule(record: any) {
     }
     loadData()
   } catch (error: any) {
-    const errorMsg = error?.response?.data?.message || error?.message || '禁用失败'
-    message.error(errorMsg)
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '禁用失败'
+    message.error(errorMsg, 5)
   }
 }
 
@@ -763,8 +764,9 @@ async function showPreviewSql(record: any) {
     const data = await request.get(`/dynamic-masking/rules/${record.id}/preview-sql`)
     previewSql.value = data.sql
     previewSqlModalVisible.value = true
-  } catch (error) {
-    //
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '获取SQL预览失败'
+    message.error(errorMsg)
   }
 }
 
@@ -773,8 +775,9 @@ async function deleteRule(id: number) {
     await request.delete(`/dynamic-masking/rules/${id}`)
     message.success(t('messages.deleteSuccess'))
     loadData()
-  } catch (error) {
-    //
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '删除失败'
+    message.error(errorMsg)
   }
 }
 

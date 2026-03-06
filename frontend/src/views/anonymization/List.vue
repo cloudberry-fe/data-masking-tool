@@ -753,8 +753,8 @@ async function executeTask(record: any) {
     message.success(result.message || t('messages.executeSuccess'))
     loadData()
   } catch (error: any) {
-    const errorMsg = error?.response?.data?.message || error?.message || '执行失败'
-    message.error(errorMsg)
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '执行失败'
+    message.error(errorMsg, 5)
   }
 }
 
@@ -764,8 +764,9 @@ async function showPreviewSql(record: any) {
     previewSql.value = data.sql
     previewData.value = data
     previewSqlModalVisible.value = true
-  } catch (error) {
-    //
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '获取SQL预览失败'
+    message.error(errorMsg)
   }
 }
 
@@ -774,8 +775,9 @@ async function deleteTask(id: number) {
     await request.delete(`/anonymization/tasks/${id}`)
     message.success(t('messages.deleteSuccess'))
     loadData()
-  } catch (error) {
-    //
+  } catch (error: any) {
+    const errorMsg = error?.response?.data?.detail || error?.response?.data?.message || error?.message || '删除失败'
+    message.error(errorMsg)
   }
 }
 

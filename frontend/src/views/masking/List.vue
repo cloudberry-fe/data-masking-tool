@@ -39,6 +39,9 @@
       row-key="id"
     >
       <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'datasource'">
+          <span>{{ getDatasourceName(record.datasourceId) }}</span>
+        </template>
         <template v-if="column.key === 'maskingMode'">
           <a-tag :color="getModeColor(record.maskingMode)">
             {{ getModeText(record.maskingMode) }}
@@ -54,9 +57,6 @@
             {{ getExecutionStatusText(record.lastExecutionStatus) }}
           </a-tag>
           <span v-else class="text-gray-400">-</span>
-        </template>
-        <template v-if="column.key === 'scheduleType'">
-          {{ record.scheduleType === 'CRON' ? t('masking.scheduleCron') : t('masking.scheduleManual') }}
         </template>
         <template v-if="column.key === 'actions'">
           <a-space>
@@ -300,12 +300,12 @@ const formState = reactive({
 })
 
 const columns = computed(() => [
-  { title: t('masking.taskName'), dataIndex: 'taskName', key: 'taskName' },
-  { title: t('masking.maskingMode'), key: 'maskingMode', width: 120 },
+  { title: t('masking.taskName'), dataIndex: 'taskName', key: 'taskName', minWidth: 180 },
+  { title: t('datasource.title'), key: 'datasource', width: 150 },
+  { title: t('masking.maskingMode'), key: 'maskingMode', width: 100 },
   { title: t('common.status'), key: 'status', width: 100 },
-  { title: t('masking.executionHistory'), key: 'lastExecution', width: 120 },
-  { title: t('masking.scheduleType'), key: 'scheduleType', width: 100 },
-  { title: t('common.createdAt'), dataIndex: 'createdAt', key: 'createdAt' },
+  { title: t('masking.lastExecution'), key: 'lastExecution', width: 100 },
+  { title: t('common.createdAt'), dataIndex: 'createdAt', key: 'createdAt', width: 160 },
   { title: t('common.actions'), key: 'actions', width: 380, fixed: 'right' as const }
 ])
 
@@ -324,6 +324,11 @@ async function loadDatasources() {
   } catch (error) {
     //
   }
+}
+
+function getDatasourceName(id: number): string {
+  const ds = datasourceList.value.find(d => d.id === id)
+  return ds?.datasourceName || '-'
 }
 
 async function loadSchemasIfNeeded() {

@@ -412,13 +412,13 @@ const addColumnForm = reactive({
 })
 
 const columns = computed(() => [
-  { title: t('dynamicMasking.ruleName'), dataIndex: 'ruleName', key: 'ruleName' },
+  { title: t('dynamicMasking.ruleName'), dataIndex: 'ruleName', key: 'ruleName', minWidth: 150 },
   { title: t('datasource.title'), key: 'datasource', width: 120 },
   { title: t('masking.tableName'), key: 'table', width: 180 },
-  { title: t('dynamicMasking.maskedRoles'), key: 'maskedRoles', width: 180 },
+  { title: t('dynamicMasking.maskedRoles'), key: 'maskedRoles', width: 150 },
   { title: t('common.status'), key: 'status', width: 100 },
-  { title: t('dynamicMasking.enabled'), key: 'isEnabled', width: 80 },
-  { title: '错误信息', key: 'errorMessage', width: 120 },
+  { title: t('dynamicMasking.errorMessage'), key: 'errorMessage', width: 150 },
+  { title: t('common.createdAt'), dataIndex: 'createdAt', key: 'createdAt', width: 160 },
   { title: t('common.actions'), key: 'actions', width: 350, fixed: 'right' as const }
 ])
 

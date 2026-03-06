@@ -117,6 +117,8 @@ export default {
     successRecords: '成功记录',
     failedRecords: '失败记录',
     errorMessage: '错误信息',
+    lastExecution: '上次执行',
+    records: '记录数',
 
     // Status
     statusDraft: '草稿',
@@ -152,6 +154,7 @@ export default {
     invalidJson: 'JSON格式无效',
     enableSuccess: '规则启用成功',
     disableSuccess: '规则禁用成功',
+    errorMessage: '错误信息',
   },
   anonymization: {
     title: '原地匿名化',

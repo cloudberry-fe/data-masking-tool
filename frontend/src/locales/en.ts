@@ -117,6 +117,8 @@ export default {
     successRecords: 'Success Records',
     failedRecords: 'Failed Records',
     errorMessage: 'Error Message',
+    lastExecution: 'Last Execution',
+    records: 'Records',
 
     // Status
     statusDraft: 'Draft',
@@ -152,6 +154,7 @@ export default {
     invalidJson: 'Invalid JSON format',
     enableSuccess: 'Rule enabled successfully',
     disableSuccess: 'Rule disabled successfully',
+    errorMessage: 'Error Message',
   },
   anonymization: {
     title: 'In-Place Anonymization',
